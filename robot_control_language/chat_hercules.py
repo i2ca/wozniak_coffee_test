@@ -67,19 +67,29 @@ def chat_input_message_update(audio_input, text_input, history):
 def update_text_from_llm():
     global _llm_response
 
-    _llm_response = llm.chat_completion_request(_text_from_audio_inference, _history_llm_talk, _openai_client, _language_model, tools=_tools)
+    _llm_response = llm.completion_request(_text_from_audio_inference, _history_llm_talk, _openai_client, _language_model, tools=_tools)
 
 
 def write_hercules_answer_on_chat(history):
     global _llm_response
     llm_response = ""
-    llm_response += "Text: "
-    if _llm_response.choices[0].message.content is not None:
-        llm_response += _llm_response.choices[0].message.content
+    print(_llm_response)
+    for response in _llm_response:
+        llm_response += "Text: "
+        if response.content is not None:
+            llm_response += response.content
+        llm_response += "\nFunctions: "
+        if response.tool_calls is not None:
+            llm_response += str(response.tool_calls)
+        llm_response += "\n"
+
+    # llm_response += "Text: "
+    # if _llm_response.choices[0].message.content is not None:
+    #     llm_response += _llm_response.choices[0].message.content
     
-    llm_response += "\nFunctions: "
-    if _llm_response.choices[0].message.tool_calls is not None:
-        llm_response += str(_llm_response.choices[0].message.tool_calls)
+    # llm_response += "\nFunctions: "
+    # if _llm_response.choices[0].message.tool_calls is not None:
+    #     llm_response += str(_llm_response.choices[0].message.tool_calls)
     
     return [(history[-1][0], llm_response)]
 

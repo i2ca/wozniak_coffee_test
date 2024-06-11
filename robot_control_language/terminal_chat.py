@@ -3,6 +3,8 @@ from openai import OpenAI
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 from termcolor import colored
 import yaml
+import json
+from tools import available_functions
 
 
 def load_settings(settings_file):
@@ -45,12 +47,37 @@ def main(args):
     while True:
         user_message = input("User: ")
         messages.append({"role": "user", "content": user_message})
-        chat_response = chat_completion_request(
+
+        response_message = chat_completion_request(
             client, args.model, messages, tools=tools
-        )
-        assistant_message = chat_response.choices[0].message
-        messages.append(assistant_message)
-        pretty_print_message(assistant_message)
+        ).choices[0].message
+        pretty_print_message(response_message)
+        tool_calls = response_message.tool_calls
+        messages.append(response_message)
+        while tool_calls:
+            # Send the info for each function call and function response to the model
+            for tool_call in tool_calls:
+                function_name = tool_call.function.name
+                function_to_call = available_functions[function_name]
+                function_args = json.loads(tool_call.function.arguments)
+                function_response = function_to_call(
+                    location=function_args.get("location"),
+                    unit=function_args.get("unit"),
+                )
+                messages.append(
+                    {
+                        "tool_call_id": tool_call.id,
+                        "role": "tool",
+                        "name": function_name,
+                        "content": function_response,
+                    }
+                )
+            response_message = chat_completion_request(
+                client, args.model, messages, tools=tools
+            ).choices[0].message
+            pretty_print_message(response_message)
+            tool_calls = response_message.tool_calls
+            messages.append(response_message)
 
 
 if __name__ == '__main__':
