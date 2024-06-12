@@ -23,7 +23,7 @@ def get_n_day_weather_forecast(location: str, format: TemperatureUnit, num_days:
     return json.dumps({"location": location, "temperature": "25", "unit": "celsius", "num_days": "5"})
 
 
-available_functions = {
+hercules_functions = {
     "get_current_weather": get_current_weather,
     "get_n_day_weather_forecast": get_n_day_weather_forecast,
 }
