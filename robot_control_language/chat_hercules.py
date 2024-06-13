@@ -5,6 +5,9 @@ import llm
 import time
 import whisper
 import argparse
+from llm import OpenAIAgent
+from tools import hercules_functions
+from openai.types.chat.chat_completion import ChatCompletionMessage
 
 
 ########################################################################################################################
@@ -18,6 +21,8 @@ Logo, se enviar uma mensagem usando ambas as entradas, o Hércules irá consider
 # Variavel global que armazena o texto que vai vim do audio
 _text_from_audio_inference = ""
 
+_image = None
+
 # Carrega o modelo do whisper. A primeira vez que roda ele baixa o modelo para a máquina. Pode alterar para outros
 # modelos Se rodar `whisper.available_models()`, é possível ver os modelos atuais. O segundo parâmetro define o device
 # que vai ser realizada a inferência. Se usar GPU, o CUDA tem que estar configurado corretamente.
@@ -25,10 +30,7 @@ _model = whisper.load_model("small", "cpu")
 
 # Variavel com o texto da inferencia e o historico da conversa com o modelo (considerando a pré configuração)
 _llm_response = None
-_history_llm_talk = ""
-_openai_client: llm.openai.Client = None
-_language_model: str = ""
-_tools = None
+_language_model: OpenAIAgent
 ########################################################################################################################
 ########################################################################################################################
 
@@ -49,8 +51,10 @@ def audio_inference(audio):
     return _text_from_audio_inference
 
 
-def chat_input_message_update(audio_input, text_input, history):
-    global _text_from_audio_inference
+def chat_input_message_update(audio_input, text_input, image, history):
+    global _text_from_audio_inference, _image
+
+    _image = image
 
     resp = text_input
     _text_from_audio_inference = resp
@@ -58,40 +62,35 @@ def chat_input_message_update(audio_input, text_input, history):
         resp = audio_inference(audio_input)
 
     if resp != "":
-        return "", history + [[resp, None]]
-    else:
-        return "", history
-
+        history = history + [[resp, None]]
+    if image is not None:
+        history = history + [[(image,), None]]
+    print(history)
+    return "", history
 
 # Aqui que a inferencia da llm entra
 def update_text_from_llm():
     global _llm_response
 
-    _llm_response = llm.completion_request(_text_from_audio_inference, _history_llm_talk, _openai_client, _language_model, tools=_tools)
+    _llm_response = _language_model.invoke(_text_from_audio_inference, _image)
 
 
 def write_hercules_answer_on_chat(history):
     global _llm_response
     llm_response = ""
-    print(_llm_response)
     for response in _llm_response:
-        llm_response += "Text: "
-        if response.content is not None:
-            llm_response += response.content
-        llm_response += "\nFunctions: "
-        if response.tool_calls is not None:
-            llm_response += str(response.tool_calls)
-        llm_response += "\n"
-
-    # llm_response += "Text: "
-    # if _llm_response.choices[0].message.content is not None:
-    #     llm_response += _llm_response.choices[0].message.content
-    
-    # llm_response += "\nFunctions: "
-    # if _llm_response.choices[0].message.tool_calls is not None:
-    #     llm_response += str(_llm_response.choices[0].message.tool_calls)
-    
-    return [(history[-1][0], llm_response)]
+        if isinstance(response, ChatCompletionMessage):
+            llm_response += "\nText: "
+            if response.content is not None:
+                llm_response += response.content
+            llm_response += "\nFunctions: "
+            if response.tool_calls is not None:
+                llm_response += str(response.tool_calls)
+        else:
+            llm_response += "\nFunctions returns: "
+            llm_response += str(response)
+    history[-1][1] = llm_response
+    return history
 
 
 def update_text_from_audio():
@@ -108,10 +107,7 @@ if __name__ == "__main__":
     parser.add_argument('--settings-file-path', type=str, default="settings.yaml")
     args = parser.parse_args()
 
-    system_prompt, _tools = llm.load_settings(args.settings_file_path)
-
-    _openai_client, _history_llm_talk = llm.set_pre_configuration(args.api_base, system_prompt)
-    _language_model = args.model
+    _language_model = OpenAIAgent(args.model, hercules_functions, args.settings_file_path, api_base=args.api_base)    
 
     with gr.Blocks(title="Hercules LCAD",
                    theme=gr.themes.Soft(primary_hue="blue"),
@@ -130,7 +126,8 @@ if __name__ == "__main__":
             text_input = gr.Textbox(label="Texto da mensagem para o Hércules",
                                     scale=2)
 
-            # image_input = gr.Image(label="Envie sua imagem para o Hércules")
+            image_input = gr.Image(label="Envie sua imagem para o Hércules",
+                                   type='filepath')
 
         with gr.Row():
             submit_btn = gr.Button("Enviar ↪️", scale=2)
@@ -139,7 +136,7 @@ if __name__ == "__main__":
 
 
         submit_btn.click(chat_input_message_update,
-                         [audio_input, text_input, chatbot],
+                         [audio_input, text_input, image_input, chatbot],
                          [text_input, chatbot], queue=False)\
             .then(update_text_from_audio, None, text_input)\
             .then(update_text_from_llm, None, None)\

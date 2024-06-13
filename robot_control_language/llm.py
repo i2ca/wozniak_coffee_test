@@ -47,18 +47,17 @@ class OpenAIAgent():
             return e
 
 
-    def _add_user_message_to_chat_history(self, text, local_image_path, online_image_url):
+    def _add_user_message_to_chat_history(self, text, image_path):
         message = {
             "role": "user",
             "content": [],
         }
         if text is not None:
             message["content"].append({"type": "text", "text": text})
-        if local_image_path is not None:
-            base64_image = base64.encode_image(local_image_path)
-            message["content"].append({"type": "image", "image": base64_image})
-        if online_image_url is not None:
-            message["content"].append({"type": "image_url", "image_url": online_image_url})
+        if image_path is not None:
+            with open(image_path, "rb") as image_file:
+                base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+            message["content"].append({"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}})
         
         if (len(message["content"]) == 0):
             raise ValueError("No content provided for user message")
@@ -82,8 +81,8 @@ class OpenAIAgent():
         self.chat_history.append(tool_response)
 
 
-    def invoke(self, text, local_image_path, online_image_url):
-        self._add_user_message_to_chat_history(text, local_image_path, online_image_url)
+    def invoke(self, text, image_path):
+        self._add_user_message_to_chat_history(text, image_path)
         new_message_index = len(self.chat_history)
         while True:
             response_message = self._chat_completion_request().choices[0].message
