@@ -46,5 +46,8 @@ Due to the unecessary complexity added by frameworks such as Langchain, Llamaind
 
 During the initialization, LLM requires a list of available functions (defined in robot_control_language/tools.py -> hercules_functions) and a configuration file (robot_control_language/settings.yaml). Take a look at them as examples for future development.
 
-## Roadmap
+## Activities
 - Implement streaming response in llm.py and chat_hercules.py
+- Fix the text response format in the chat
+- Fix the audio output to only say the Text part (do not say the function called)
+- Make the chat window bigger
