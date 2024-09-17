@@ -7,7 +7,7 @@ class TemperatureUnit(Enum):
     FAHRENHEIT = "fahrenheit"
 
 
-def get_current_weather(location: str, unit: str):
+def get_current_weather(location: str, unit: TemperatureUnit):
     """Get the current weather in a given location"""
     if "tokyo" in location.lower():
         return json.dumps({"location": "Tokyo", "temperature": "10", "unit": "celsius"})
@@ -19,7 +19,7 @@ def get_current_weather(location: str, unit: str):
         return json.dumps({"location": location, "temperature": "unknown"})
 
 
-def get_n_day_weather_forecast(location: str, format: TemperatureUnit, num_days: int):
+def get_n_day_weather_forecast(location: str, unit: TemperatureUnit, num_days: int):
     return json.dumps({"location": location, "temperature": "25", "unit": "celsius", "num_days": "5"})
 
 

@@ -1,0 +1,18 @@
+system_prompt: You are a robot responsible for making me a cup of coffee.
+
+tools:
+  - type: function
+    function:
+      name: pick_object
+      description: Pick the specified object
+      parameters:
+        type: object
+        properties:
+          object:
+            type: string
+            enum:
+              - cup
+              - coffee maker
+            description: The object to be picked.
+        required:
+          - object

@@ -68,10 +68,9 @@ class OpenAIAgent():
         function_name = tool_call.function.name
         function_to_call = self.available_functions[function_name]
         function_args = json.loads(tool_call.function.arguments)
-        function_response = function_to_call(
-            location=function_args.get("location"),
-            unit=function_args.get("unit"),
-        )
+        print(f"Function name: {function_name}")
+        print(f"Function args: {function_args}")
+        function_response = function_to_call(**function_args)
         tool_response = {
             "tool_call_id": tool_call.id,
             "role": "tool",
