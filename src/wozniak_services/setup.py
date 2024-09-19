@@ -1,22 +1,17 @@
-from setuptools import setup, find_packages
+from setuptools import setup
 
-package_name = 'robot_control_language'
+package_name = 'wozniak_services'
 
 setup(
     name=package_name,
     version='0.0.0',
-    packages=find_packages(),  # This will include all sub-packages
+    packages=[package_name],
     data_files=[
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
     ],
-    install_requires=[
-        'setuptools',
-        'termcolor',
-        'openai',
-        'tenacity'
-    ],
+    install_requires=['setuptools'],
     zip_safe=True,
     maintainer='breno',
     maintainer_email='brenodeangelo@gmail.com',
@@ -25,7 +20,7 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'terminal_chat = robot_control_language.terminal_chat:main'
+            'pick_object_server = wozniak_services.pick_object:main',
         ],
     },
 )
