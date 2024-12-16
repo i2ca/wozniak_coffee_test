@@ -1,0 +1,3 @@
+termcolor
+openai
+tenacity
