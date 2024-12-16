@@ -1,10 +1,8 @@
 import json
-from enum import Enum
 import rclpy
+from rclpy.node import Node
+from enum import Enum
 from wozniak_interfaces.srv import PickObject
-
-rclpy.init()
-node = rclpy.create_node("hercules_tools")
 
 
 class KitchenObjects(Enum):
@@ -12,7 +10,7 @@ class KitchenObjects(Enum):
     COFFEE_MAKER = "coffee maker"
 
 
-def pick_object(object: KitchenObjects):
+def pick_object(node: Node, object: KitchenObjects):
     """Pick the object."""
     client = node.create_client(PickObject, "pick_object")
 

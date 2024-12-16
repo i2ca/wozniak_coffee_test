@@ -1,4 +1,6 @@
+import os
 from setuptools import setup, find_packages
+from glob import glob
 
 package_name = 'robot_control_language'
 
@@ -10,7 +12,14 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
+        (os.path.join('share', package_name, 'launch'), glob('launch/*.py')),
+        ('share/' + package_name + '/coffee', glob('robot_control_language/coffee/*.yaml')),
     ],
+    package_data={
+        'robot_control_language': [
+            'coffee/settings.yaml',  # Adjust the path to ensure it matches your directory structure
+        ],
+    },
     install_requires=[
         'setuptools',
         'termcolor',
@@ -25,7 +34,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'terminal_chat = robot_control_language.terminal_chat:main'
+            'terminal_chat = robot_control_language.terminal_chat:main',
+            'realsense_llm = robot_control_language.realsense_llm:main',
         ],
     },
 )
