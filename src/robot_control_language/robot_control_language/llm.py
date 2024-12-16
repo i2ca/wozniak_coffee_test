@@ -1,3 +1,4 @@
+from typing import List, Dict
 from openai import OpenAI
 import yaml
 from tenacity import retry, wait_random_exponential, stop_after_attempt
@@ -7,7 +8,7 @@ import base64
 
 class OpenAIAgent():
 
-    chat_history: list[dict]
+    chat_history: List[Dict]
     openai_client: OpenAI
     model: str
     system_prompt: str
@@ -68,8 +69,6 @@ class OpenAIAgent():
         function_name = tool_call.function.name
         function_to_call = self.available_functions[function_name]
         function_args = json.loads(tool_call.function.arguments)
-        print(f"Function name: {function_name}")
-        print(f"Function args: {function_args}")
         function_response = function_to_call(**function_args)
         tool_response = {
             "tool_call_id": tool_call.id,
