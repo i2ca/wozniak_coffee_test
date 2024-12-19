@@ -29,11 +29,7 @@ ROS has some problems dealing with virtual environments. If you wish to use one,
 <details>
 <summary>Venv</summary>
 To create the virtual environment:
-```bash
-cd ~/I2CA/wozniak_coffee_test
-python3 -m venv --system-site-packages venv
-source venv/bin/activate
-```
+```cd ~/I2CA/wozniak_coffee_test && python3 -m venv --system-site-packages venv && source venv/bin/activate```
 </details>
 
 To install the python dependencies, run:
