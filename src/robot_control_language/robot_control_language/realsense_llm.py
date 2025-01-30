@@ -29,7 +29,7 @@ class MultimodalLLMNode(Node):
         # Subscription to the RealSense `image_raw` topic
         self.subscription = self.create_subscription(
             Image,
-            f'/{camera_namespace}/color/image_raw',
+            f'/{camera_namespace}/{camera_name}/color/image_raw',
             self.image_callback,
             10
         )
@@ -45,7 +45,7 @@ class MultimodalLLMNode(Node):
 
         # Initialize the OpenAIAgent
         api_key = os.getenv('OPENAI_API_KEY')
-        self.agent = OpenAIAgent(model, available_functions, settings_file, api_key=api_key)
+        self.agent = OpenAIAgent(model, available_functions, settings_file, self, api_key=api_key)
 
         # Initialize the service to trigger the OpenAI agent
         self.trigger_llm_srv = self.create_service(TriggerLLM, 'trigger_llm', self.trigger_llm)
@@ -58,6 +58,7 @@ class MultimodalLLMNode(Node):
             self.get_logger().error(f"Failed to process image: {e}")
 
     def trigger_llm(self, request, response):
+        self.get_logger().info(f"Received request to trigger LLM with message: {request.message}")
         if self.latest_frame is None:
             self.get_logger().warn('No image available to send.')
             response.success = False
