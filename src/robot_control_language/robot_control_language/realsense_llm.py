@@ -19,7 +19,7 @@ class MultimodalLLMNode(Node):
         self.declare_parameter('camera_name', 'camera')
         self.declare_parameter('camera_namespace', 'camera')
         self.declare_parameter('model', 'gpt-4o-mini')
-        self.declare_parameter('settings_file', '/path/to/default/settings.yaml')
+        self.declare_parameter('settings_file', '/home/luiz/I2CA/wozniak_coffee_test/src/robot_control_language/robot_control_language/coffee/settings.yaml')
 
         camera_name = self.get_parameter('camera_name').get_parameter_value().string_value
         camera_namespace = self.get_parameter('camera_namespace').get_parameter_value().string_value
@@ -29,7 +29,7 @@ class MultimodalLLMNode(Node):
         # Subscription to the RealSense `image_raw` topic
         self.subscription = self.create_subscription(
             Image,
-            f'/{camera_namespace}/{camera_name}/color/image_raw',
+            f'/{camera_namespace}/color/image_raw',
             self.image_callback,
             10
         )
