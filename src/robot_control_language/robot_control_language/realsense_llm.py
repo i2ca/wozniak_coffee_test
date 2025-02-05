@@ -19,7 +19,7 @@ class MultimodalLLMNode(Node):
         self.declare_parameter('camera_name', 'camera')
         self.declare_parameter('camera_namespace', 'camera')
         self.declare_parameter('model', 'gpt-4o-mini')
-        self.declare_parameter('settings_file', '/path/to/default/settings.yaml')
+        self.declare_parameter('settings_file', '/home/luiz/I2CA/wozniak_coffee_test/src/robot_control_language/robot_control_language/coffee/settings.yaml')
 
         camera_name = self.get_parameter('camera_name').get_parameter_value().string_value
         camera_namespace = self.get_parameter('camera_namespace').get_parameter_value().string_value
@@ -45,7 +45,7 @@ class MultimodalLLMNode(Node):
 
         # Initialize the OpenAIAgent
         api_key = os.getenv('OPENAI_API_KEY')
-        self.agent = OpenAIAgent(model, available_functions, settings_file, api_key=api_key)
+        self.agent = OpenAIAgent(model, available_functions, settings_file, self, api_key=api_key)
 
         # Initialize the service to trigger the OpenAI agent
         self.trigger_llm_srv = self.create_service(TriggerLLM, 'trigger_llm', self.trigger_llm)
@@ -58,6 +58,7 @@ class MultimodalLLMNode(Node):
             self.get_logger().error(f"Failed to process image: {e}")
 
     def trigger_llm(self, request, response):
+        self.get_logger().info(f"Received request to trigger LLM with message: {request.message}")
         if self.latest_frame is None:
             self.get_logger().warn('No image available to send.')
             response.success = False

@@ -6,7 +6,7 @@ from openai.types.chat.chat_completion_message import ChatCompletionMessage
 
 
 def main():
-    agent = OpenAIAgent("gpt-4o", hercules_functions, "/home/breno/I2CA/wozniak_coffee_test/src/robot_control_language/robot_control_language/coffee/settings.yaml")
+    agent = OpenAIAgent("gpt-4o", hercules_functions, "/home/luiz/I2CA/wozniak_coffee_test/src/robot_control_language/robot_control_language/coffee/settings.yaml")
     while True:
         user_message = input("User: ")
         response = agent.invoke(user_message, None)

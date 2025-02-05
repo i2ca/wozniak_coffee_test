@@ -5,12 +5,7 @@ from enum import Enum
 from wozniak_interfaces.srv import PickObject
 
 
-class KitchenObjects(Enum):
-    CUP = "cup"
-    COFFEE_MAKER = "coffee maker"
-
-
-def pick_object(node: Node, object: KitchenObjects):
+def pick_object(node: Node, object: str):
     """Pick the object."""
     client = node.create_client(PickObject, "pick_object")
 

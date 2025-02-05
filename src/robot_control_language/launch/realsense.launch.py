@@ -1,7 +1,8 @@
 import os
 from launch import LaunchDescription
 from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from ament_index_python.packages import get_package_share_directory
 
@@ -14,12 +15,16 @@ def generate_launch_description():
         DeclareLaunchArgument('model', default_value='gpt-4o-mini', description='VLM to use'),
         DeclareLaunchArgument('settings_file', default_value=settings_default, description='LLM settings yaml file'),
 
-        Node(
-            package='realsense2_camera',
-            executable='realsense2_camera_node',
-            name=LaunchConfiguration('camera_name'),
-            output='screen',
-            namespace=LaunchConfiguration('camera_namespace'),
+        IncludeLaunchDescription(
+            PythonLaunchDescriptionSource([get_package_share_directory('realsense2_camera'), '/launch/rs_launch.py']),
+            launch_arguments={
+                'camera_name': LaunchConfiguration('camera_name'),
+                'camera_namespace': LaunchConfiguration('camera_namespace'),
+                'align_depth.enable': 'True',
+                'enable_sync': 'True',
+                'enable_pointcloud': 'False',
+                'enable_rgbd': 'True',
+            }.items()
         ),
         Node(
             package='robot_control_language',

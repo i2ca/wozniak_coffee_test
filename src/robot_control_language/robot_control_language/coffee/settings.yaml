@@ -10,9 +10,6 @@ tools:
         properties:
           object:
             type: string
-            enum:
-              - cup
-              - coffee maker
             description: The object to be picked.
         required:
           - object
