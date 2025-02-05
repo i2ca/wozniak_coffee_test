@@ -1,4 +1,5 @@
 string target_object
+string instruction
 ---
 bool success
 string message
