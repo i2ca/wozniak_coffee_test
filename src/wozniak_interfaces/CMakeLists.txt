@@ -21,7 +21,8 @@ find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/PickObject.srv"
-  "srv/TriggerLLM.srv"
+  "srv/HighlightObject.srv"
+  "srv/Coord.srv"
 )
 
 if(BUILD_TESTING)
