@@ -7,6 +7,7 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include <opencv4/opencv2/opencv.hpp>
 #include <cv_bridge/cv_bridge.h>
+#include "wozniak_interfaces/srv/coord.hpp"
 
 class RealsenseImageAnalyzer : public rclcpp::Node
 {
@@ -64,6 +65,8 @@ public:
             std::bind(&RealsenseImageAnalyzer::timer_callback, this)
         );
 
+        client = this->create_client<wozniak_interfaces::srv::Coord>("Coord");
+
         RCLCPP_INFO(this->get_logger(), "RealsenseImageAnalyzer node started.");
     }
 
@@ -84,6 +87,8 @@ private:
     sensor_msgs::msg::CameraInfo::SharedPtr camera_info_;
     sensor_msgs::msg::Image::SharedPtr image_raw_;
     sensor_msgs::msg::Image::SharedPtr aligned_depth_image_;
+
+    rclcpp::Client<wozniak_interfaces::srv::Coord>::SharedPtr client;
     
 
     void timer_callback()
@@ -118,6 +123,9 @@ private:
 
         // Broadcast the position of the red dot as a transform
         publish_transform(red_dot_position);
+
+        // Call Service Client
+        call_service(red_dot_position);
     }
 
     geometry_msgs::msg::Vector3::SharedPtr get_3d_position(int x, int y)
@@ -225,7 +233,34 @@ private:
         // Publish the transform
         tf_broadcaster_->sendTransform(transform_stamped);
     }
+
+    void call_service(geometry_msgs::msg::Vector3::SharedPtr position)
+    {
+        auto request = std::make_shared<wozniak_interfaces::srv::Coord::Request>();
+        request->x = position->x;
+        request->y = position->y;
+        request->z = position->z;
+
+        while (!client->wait_for_service(std::chrono::seconds(1))) {
+            if (!rclcpp::ok()) {
+                RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Interrupted while waiting for the service. Exiting.");
+                return;
+            }
+            RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "service not available, waiting again...");
+        }
+
+        auto result = client->async_send_request(request);
+        // Wait for the result.
+        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result) ==
+            rclcpp::FutureReturnCode::SUCCESS)
+        {
+            RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Success: %d", result.get()->success);
+        } else {
+            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to call service Coord");
+        }
+    }
 };
+
 
 int main(int argc, char *argv[])
 {
