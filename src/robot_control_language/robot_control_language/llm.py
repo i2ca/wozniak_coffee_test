@@ -4,6 +4,7 @@ import yaml
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 import json
 import base64
+from rclpy.node import Node
 
 
 class OpenAIAgent():
@@ -14,13 +15,15 @@ class OpenAIAgent():
     system_prompt: str
     tools: dict
     available_functions: dict
+    node: Node
 
 
-    def __init__(self, model, available_functions, settings_file_path, api_key=None, api_base='https://api.openai.com/v1'):
+    def __init__(self, model, available_functions, settings_file_path, node, api_key=None, api_base='https://api.openai.com/v1'):
         if api_key is None:
             self.openai_client = OpenAI()
         else:
             self.openai_client = OpenAI(api_key=api_key, base_url=api_base)
+        self.node = node
         self.model = model
         self.system_prompt, self.tools = self._load_settings(settings_file_path)
         self.available_functions = available_functions
@@ -43,8 +46,8 @@ class OpenAIAgent():
             )
             return response
         except Exception as e:
-            print("Unable to generate ChatCompletion response")
-            print(f"Exception: {e}")
+            self.node.get_logger().error("Unable to generate ChatCompletion response")
+            self.node.get_logger().error(f"Exception: {e}")
             return e
 
 
@@ -66,10 +69,13 @@ class OpenAIAgent():
 
 
     def _execute_tool_call(self, tool_call):
+        self.node.get_logger().info(f"Executing tool call: {tool_call}")
         function_name = tool_call.function.name
         function_to_call = self.available_functions[function_name]
         function_args = json.loads(tool_call.function.arguments)
+        function_args["node"] = self.node
         function_response = function_to_call(**function_args)
+        self.node.get_logger().info(f"Function response: {function_response}")
         tool_response = {
             "tool_call_id": tool_call.id,
             "role": "tool",
@@ -80,9 +86,11 @@ class OpenAIAgent():
 
 
     def invoke(self, text, image_path):
+        self.node.get_logger().info(f"Received text: {text}")
         self._add_user_message_to_chat_history(text, image_path)
         new_message_index = len(self.chat_history)
         while True:
+            self.node.get_logger().info("Requesting chat completion")
             response_message = self._chat_completion_request().choices[0].message
             tool_calls = response_message.tool_calls
             self.chat_history.append(response_message)

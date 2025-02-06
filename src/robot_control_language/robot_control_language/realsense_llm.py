@@ -9,6 +9,7 @@ import threading
 import queue
 from robot_control_language.llm import OpenAIAgent
 from robot_control_language.coffee.tools import hercules_functions as available_functions
+from wozniak_interfaces.srv import Coord
 from wozniak_interfaces.srv import TriggerLLM
 
 

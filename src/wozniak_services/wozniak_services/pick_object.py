@@ -45,8 +45,11 @@ class PickObjectService(Node):
             return response
 
         x, y = self.image_recognition(request.object)
+        self.get_logger().info('Object detected at x: %d, y: %d' % (x, y))
         position = self.get_3d_position(x, y)
+        self.get_logger().info(f"Object position: {position}")
         self.publish_transform(position)
+        self.get_logger().info(f"TF published")
     
         response.success = True
         response.message = 'Object picked'
@@ -64,28 +67,42 @@ class PickObjectService(Node):
         return base64_str
 
     def image_recognition(self, object):
-        # Call the OpenAI API to recognize the object. Return the coordinates of the object in percent.
+        """Calls OpenAI API to recognize an object and retries up to 3 times if not found."""
         client = OpenAI(base_url="http://10.9.8.252:8000/v1")
-        self.get_logger().info('Calling OpenAI API')
-        response = client.chat.completions.create(
-            messages=[{"role": "user", "content": [
-                            {"type": "text", "text": "Point to the " + object + " in this image."},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{self.encode_latest_frame_base64()}"}}
-                      ]}],
-            model="lcad-ica",
-            max_completion_tokens=300,
-        )
-        result = response.choices[0].message.content
-        self.get_logger().info('OpenAI response: %s' % (result))
-        matches = re.findall(r'x\d+="(\d+\.\d+)" y\d+="(\d+\.\d+)"', result)
-        if not matches:
-            raise Exception("Object not found")
-        x, y = matches[0]
-        if x < 0 or x > 100 or y < 0 or y > 100:
-            raise Exception("Object not found")
-        x_pixel = int(float(x) * self.latest_frame.width / 100)
-        y_pixel = int(float(y) * self.latest_frame.height / 100)
-        return x_pixel, y_pixel
+        
+        max_retries = 3
+        for attempt in range(max_retries):
+            self.get_logger().info(f"Attempt {attempt + 1} to recognize object: {object}")
+
+            self.get_logger().info('Calling OpenAI API')
+            response = client.chat.completions.create(
+                messages=[{"role": "user", "content": [
+                                {"type": "text", "text": "Point to the " + object + " in this image."},
+                                {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{self.encode_latest_frame_base64()}"}}
+                        ]}],
+                model="lcad-ica",
+                max_completion_tokens=300,
+            )
+
+            result = response.choices[0].message.content
+            self.get_logger().info('OpenAI response: %s' % result)
+
+            matches = re.findall(r'<point x="([\d.]+)" y="([\d.]+)"', result)
+            self.get_logger().info('Matches: %s' % matches)
+
+            if matches:
+                x = float(matches[0][0])
+                y = float(matches[0][1])
+                self.get_logger().info(f"x: {x}, y: {y}")
+
+                if 0 <= x <= 100 and 0 <= y <= 100:
+                    x_pixel = int(x * self.latest_frame.width / 100)
+                    y_pixel = int(y * self.latest_frame.height / 100)
+                    return x_pixel, y_pixel
+
+            self.get_logger().warning(f"Object not found, retrying... ({attempt + 1}/{max_retries})")
+
+        raise Exception("Object not found after 3 attempts")
     
     def get_3d_position(self, x, y):
         fx = self.camera_info.k[0]

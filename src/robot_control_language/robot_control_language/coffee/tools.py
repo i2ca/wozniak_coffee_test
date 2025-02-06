@@ -1,12 +1,12 @@
-import json
 import rclpy
 from rclpy.node import Node
-from enum import Enum
 from wozniak_interfaces.srv import PickObject
 
 
 def pick_object(node: Node, object: str):
     """Pick the object."""
+    node.get_logger().info(f"node: {node}")
+    node.get_logger().info(f"object: {object}")
     client = node.create_client(PickObject, "pick_object")
 
     # Wait for the service to be available
