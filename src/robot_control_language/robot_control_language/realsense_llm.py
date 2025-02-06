@@ -19,7 +19,7 @@ class MultimodalLLMNode(Node):
         self.declare_parameter('camera_name', 'camera')
         self.declare_parameter('camera_namespace', 'camera')
         self.declare_parameter('model', 'gpt-4o-mini')
-        self.declare_parameter('settings_file', '/home/luiz/I2CA/wozniak_coffee_test/src/robot_control_language/robot_control_language/coffee/settings.yaml')
+        self.declare_parameter('settings_file', '/your/home/path/I2CA/wozniak_coffee_test/src/robot_control_language/robot_control_language/coffee/settings.yaml')
 
         camera_name = self.get_parameter('camera_name').get_parameter_value().string_value
         camera_namespace = self.get_parameter('camera_namespace').get_parameter_value().string_value
