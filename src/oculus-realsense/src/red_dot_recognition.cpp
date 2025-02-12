@@ -81,7 +81,7 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub_image_mask;
     
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
-    
+
     std::string camera_frame_;
     std::string detected_object_frame_;
     sensor_msgs::msg::CameraInfo::SharedPtr camera_info_;
@@ -89,7 +89,7 @@ private:
     sensor_msgs::msg::Image::SharedPtr aligned_depth_image_;
 
     rclcpp::Client<wozniak_interfaces::srv::Coord>::SharedPtr client;
-    
+
 
     void timer_callback()
     {
@@ -249,15 +249,15 @@ private:
             RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "service not available, waiting again...");
         }
 
-        auto result = client->async_send_request(request);
-        // Wait for the result.
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result) ==
-            rclcpp::FutureReturnCode::SUCCESS)
-        {
-            RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Success: %d", result.get()->success);
-        } else {
-            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to call service Coord");
-        }
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "sending request...");
+        auto result_future = client->async_send_request(request,
+        [this](rclcpp::Client<wozniak_interfaces::srv::Coord>::SharedFuture response) {
+            if (response.get()->success) {
+                RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Success: %d", response.get()->success);
+            } else {
+                RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to call service Coord");
+            }
+        });
     }
 };
 

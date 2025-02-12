@@ -45,6 +45,7 @@ class PickObjectService(Node):
             return response
 
         x, y = self.image_recognition(request.object)
+        # x, y = 50, 50
         self.get_logger().info('Object detected at x: %d, y: %d' % (x, y))
         position = self.get_3d_position(x, y)
         self.get_logger().info(f"Object position: {position}")

@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'pick_object_server = wozniak_services.pick_object:main',
+            'mock_unity_server = wozniak_services.mock_unity_server:main',
         ],
     },
 )
