@@ -35,10 +35,10 @@ def generate_launch_description():
                 {'camera_namespace': LaunchConfiguration('camera_namespace')},
             ]
         ),
-        Node(
-            package='tf2_ros',
-            executable='static_transform_publisher',
-            name='static_tf_camera_to_oculus',
-            arguments=['0', '3.3', '5.3', '0', '0', '0', 'oculus_link', 'camera_link']
-        )
+        # Node(
+        #     package='tf2_ros',
+        #     executable='static_transform_publisher',
+        #     name='static_tf_camera_to_oculus',
+        #     arguments=['0.0', '0.0', '0.0', '0', '0', '0', 'oculus_link', 'camera_link']
+        # )
     ])
