@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 from wozniak_interfaces.srv import Coord
 
+
 class CoordService(Node):
     def __init__(self):
         super().__init__('coord_service')

@@ -124,12 +124,16 @@ private:
         // Broadcast the position of the red dot as a transform
         publish_transform(red_dot_position);
 
+        // Get red_dot_position with respect to oculus_link
+
         // Call Service Client
         call_service(red_dot_position);
     }
 
     geometry_msgs::msg::Vector3::SharedPtr get_3d_position(int x, int y)
     {
+        RCLCPP_INFO(this->get_logger(), "Getting 3D position for pixel coordinates: x=%d, y=%d", x, y);
+
         if (!camera_info_ || !aligned_depth_image_)
         {
             RCLCPP_ERROR(this->get_logger(), "Camera info or depth image not available.");
@@ -162,7 +166,7 @@ private:
         geometry_msgs::msg::Vector3::SharedPtr point(new geometry_msgs::msg::Vector3());
         point->x = (x - cx) * depth / fx;
         point->y = (y - cy) * depth / fy;
-        point->z = depth / 1000.0;  // Convert millimeters to meters
+        point->z = depth;  // Convert millimeters to meters
 
         return point;
     }
@@ -223,6 +227,9 @@ private:
         transform_stamped.transform.translation.x = position->x;
         transform_stamped.transform.translation.y = position->y;
         transform_stamped.transform.translation.z = position->z;
+        // transform_stamped.transform.translation.x = 0.0;
+        // transform_stamped.transform.translation.y = 0.0;
+        // transform_stamped.transform.translation.z = 1.0;
 
         // No rotation (we assume no rotation for simplicity)
         transform_stamped.transform.rotation.x = 0.0;
@@ -250,10 +257,11 @@ private:
         }
 
         RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "sending request...");
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "x: %f, y: %f, z: %f", request->x, request->y, request->z);
         auto result_future = client->async_send_request(request,
         [this](rclcpp::Client<wozniak_interfaces::srv::Coord>::SharedFuture response) {
             if (response.get()->success) {
-                RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Success: %d", response.get()->success);
+                RCLCPP_DEBUG(rclcpp::get_logger("rclcpp"), "Success: %d", response.get()->success);
             } else {
                 RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to call service Coord");
             }

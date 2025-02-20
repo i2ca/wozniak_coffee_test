@@ -22,7 +22,7 @@ def generate_launch_description():
                 'camera_namespace': LaunchConfiguration('camera_namespace'),
                 'align_depth.enable': 'True',
                 'enable_sync': 'True',
-                'enable_pointcloud': 'False',
+                'enable_pointcloud': 'True',
                 'enable_rgbd': 'True',
             }.items()
         ),
@@ -34,5 +34,11 @@ def generate_launch_description():
                 {'camera_name': LaunchConfiguration('camera_name')},
                 {'camera_namespace': LaunchConfiguration('camera_namespace')},
             ]
+        ),
+        Node(
+            package='tf2_ros',
+            executable='static_transform_publisher',
+            name='static_tf_camera_to_oculus',
+            arguments=['0', '3.3', '5.3', '0', '0', '0', 'oculus_link', 'camera_link']
         )
     ])
