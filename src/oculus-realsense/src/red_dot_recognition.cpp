@@ -67,6 +67,20 @@ public:
 
         client = this->create_client<wozniak_interfaces::srv::Coord>("Coord");
 
+        // Declare and initialize offsets
+        this->declare_parameter<double>("x_offset", 0.05);
+        this->declare_parameter<double>("y_offset", -0.03);
+        this->declare_parameter<double>("z_offset", -0.43);
+
+        x_offset_ = this->get_parameter("x_offset").as_double();
+        y_offset_ = this->get_parameter("y_offset").as_double();
+        z_offset_ = this->get_parameter("z_offset").as_double();
+
+        // Set parameter change callback
+        parameters_callback_handle_ = this->add_on_set_parameters_callback(
+            std::bind(&RealsenseImageAnalyzer::set_parameters_callback, this, std::placeholders::_1)
+        );
+
         RCLCPP_INFO(this->get_logger(), "RealsenseImageAnalyzer node started.");
     }
 
@@ -81,15 +95,35 @@ private:
     rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr pub_image_mask;
     
     std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
-    
+
     std::string camera_frame_;
     std::string detected_object_frame_;
     sensor_msgs::msg::CameraInfo::SharedPtr camera_info_;
     sensor_msgs::msg::Image::SharedPtr image_raw_;
     sensor_msgs::msg::Image::SharedPtr aligned_depth_image_;
+    rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr parameters_callback_handle_;
 
     rclcpp::Client<wozniak_interfaces::srv::Coord>::SharedPtr client;
-    
+
+    double x_offset_;
+    double y_offset_;
+    double z_offset_;
+
+
+    rcl_interfaces::msg::SetParametersResult set_parameters_callback(const std::vector<rclcpp::Parameter> &params)
+    {
+        for (const auto &param : params)
+        {
+            if (param.get_name() == "x_offset") x_offset_ = param.as_double();
+            else if (param.get_name() == "y_offset") y_offset_ = param.as_double();
+            else if (param.get_name() == "z_offset") z_offset_ = param.as_double();
+        }
+
+        rcl_interfaces::msg::SetParametersResult result;
+        result.successful = true;
+        result.reason = "Offset parameters updated successfully";
+        return result;
+    }
 
     void timer_callback()
     {
@@ -124,12 +158,16 @@ private:
         // Broadcast the position of the red dot as a transform
         publish_transform(red_dot_position);
 
+        // Get red_dot_position with respect to oculus_link
+
         // Call Service Client
         call_service(red_dot_position);
     }
 
     geometry_msgs::msg::Vector3::SharedPtr get_3d_position(int x, int y)
     {
+        RCLCPP_INFO(this->get_logger(), "Getting 3D position for pixel coordinates: x=%d, y=%d", x, y);
+
         if (!camera_info_ || !aligned_depth_image_)
         {
             RCLCPP_ERROR(this->get_logger(), "Camera info or depth image not available.");
@@ -162,7 +200,7 @@ private:
         geometry_msgs::msg::Vector3::SharedPtr point(new geometry_msgs::msg::Vector3());
         point->x = (x - cx) * depth / fx;
         point->y = (y - cy) * depth / fy;
-        point->z = depth / 1000.0;  // Convert millimeters to meters
+        point->z = depth;  // Convert millimeters to meters
 
         return point;
     }
@@ -223,6 +261,9 @@ private:
         transform_stamped.transform.translation.x = position->x;
         transform_stamped.transform.translation.y = position->y;
         transform_stamped.transform.translation.z = position->z;
+        // transform_stamped.transform.translation.x = 0.0;
+        // transform_stamped.transform.translation.y = 0.0;
+        // transform_stamped.transform.translation.z = 1.0;
 
         // No rotation (we assume no rotation for simplicity)
         transform_stamped.transform.rotation.x = 0.0;
@@ -237,9 +278,9 @@ private:
     void call_service(geometry_msgs::msg::Vector3::SharedPtr position)
     {
         auto request = std::make_shared<wozniak_interfaces::srv::Coord::Request>();
-        request->x = position->x;
-        request->y = position->y;
-        request->z = position->z;
+        request->x = position->x + x_offset_;
+        request->y = position->y + y_offset_;
+        request->z = position->z + z_offset_;
 
         while (!client->wait_for_service(std::chrono::seconds(1))) {
             if (!rclcpp::ok()) {
@@ -249,15 +290,16 @@ private:
             RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "service not available, waiting again...");
         }
 
-        auto result = client->async_send_request(request);
-        // Wait for the result.
-        if (rclcpp::spin_until_future_complete(this->get_node_base_interface(), result) ==
-            rclcpp::FutureReturnCode::SUCCESS)
-        {
-            RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "Success: %d", result.get()->success);
-        } else {
-            RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to call service Coord");
-        }
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "sending request...");
+        RCLCPP_INFO(rclcpp::get_logger("rclcpp"), "x: %f, y: %f, z: %f", request->x, request->y, request->z);
+        auto result_future = client->async_send_request(request,
+        [this](rclcpp::Client<wozniak_interfaces::srv::Coord>::SharedFuture response) {
+            if (response.get()->success) {
+                RCLCPP_DEBUG(rclcpp::get_logger("rclcpp"), "Success: %d", response.get()->success);
+            } else {
+                RCLCPP_ERROR(rclcpp::get_logger("rclcpp"), "Failed to call service Coord");
+            }
+        });
     }
 };
 

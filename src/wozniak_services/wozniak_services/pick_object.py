@@ -1,6 +1,7 @@
 import re
 import rclpy.time
 from wozniak_interfaces.srv import PickObject
+from wozniak_interfaces.srv import Coord
 from sensor_msgs.msg import Image, CameraInfo
 from openai import OpenAI
 from base64 import b64encode
@@ -23,6 +24,7 @@ class PickObjectService(Node):
         self.bridge = CvBridge()
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
         self.srv = self.create_service(PickObject, 'pick_object', self.pick_object_callback)
+        self.client = self.create_client(Coord, "Coord")
         self.create_subscription(Image, '/camera/camera/color/image_raw', self.image_callback, 10)
         self.create_subscription(Image, '/camera/camera/aligned_depth_to_color/image_raw', self.depth_callback, 10)
         self.create_subscription(CameraInfo, '/camera/camera/aligned_depth_to_color/camera_info', self.camera_info_callback, 10)
@@ -77,14 +79,20 @@ class PickObjectService(Node):
         )
         result = response.choices[0].message.content
         self.get_logger().info('OpenAI response: %s' % (result))
-        matches = re.findall(r'x\d+="(\d+\.\d+)" y\d+="(\d+\.\d+)"', result)
+        matches = re.findall(r'x="(\d+\.\d+)" y="(\d+\.\d+)"', result)
         if not matches:
             raise Exception("Object not found")
         x, y = matches[0]
+        x = float(x)
+        y = float(y)
         if x < 0 or x > 100 or y < 0 or y > 100:
             raise Exception("Object not found")
         x_pixel = int(float(x) * self.latest_frame.width / 100)
         y_pixel = int(float(y) * self.latest_frame.height / 100)
+        # Save image with point
+        cv_image = self.bridge.imgmsg_to_cv2(self.latest_frame, self.latest_frame.encoding)
+        cv2.circle(cv_image, (x_pixel, y_pixel), 5, (0, 255, 0), -1)
+        cv2.imwrite("/tmp/image.jpg", cv_image)
         return x_pixel, y_pixel
     
     def get_3d_position(self, x, y):
@@ -116,6 +124,25 @@ class PickObjectService(Node):
         t.transform.rotation.w = quat[3]
 
         self.tf_broadcaster.sendTransform(t)
+
+        if not self.client:
+            self.get_logger().error("Coord client not available")
+            return
+        
+        # Calculate the offsets
+        x_offset = 0.024
+        y_offset = 0.119
+        z_offset = 0.045
+        
+        # Call the Coord service to get the coordinates
+        coord_request = Coord.Request()
+        coord_request.x = position[0] + x_offset
+        coord_request.y = position[1] + y_offset
+        coord_request.z = position[2] + z_offset
+        #publish
+        self.get_logger().info("Calling Coord service")
+        future = self.client.call_async(coord_request)
+
 
 
 def main(args=None):
