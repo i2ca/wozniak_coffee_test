@@ -24,7 +24,8 @@ setup(
         'setuptools',
         'termcolor',
         'openai',
-        'tenacity'
+        'tenacity',
+        'opencv-python',
     ],
     zip_safe=True,
     maintainer='breno',
@@ -36,6 +37,8 @@ setup(
         'console_scripts': [
             'terminal_chat = robot_control_language.terminal_chat:main',
             'realsense_llm = robot_control_language.realsense_llm:main',
+            'llm_node = robot_control_language.llm_node:main',
+            'tools_node = robot_control_language.tools_node:main',
         ],
     },
 )

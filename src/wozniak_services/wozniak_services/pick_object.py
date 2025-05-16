@@ -25,9 +25,9 @@ class PickObjectService(Node):
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
         self.srv = self.create_service(PickObject, 'pick_object', self.pick_object_callback)
         self.client = self.create_client(Coord, "Coord")
-        self.create_subscription(Image, '/camera/camera/color/image_raw', self.image_callback, 10)
-        self.create_subscription(Image, '/camera/camera/aligned_depth_to_color/image_raw', self.depth_callback, 10)
-        self.create_subscription(CameraInfo, '/camera/camera/aligned_depth_to_color/camera_info', self.camera_info_callback, 10)
+        self.create_subscription(Image, '/camera/color/image_raw', self.image_callback, 10)
+        self.create_subscription(Image, '/camera/aligned_depth_to_color/image_raw', self.depth_callback, 10)
+        self.create_subscription(CameraInfo, '/camera/aligned_depth_to_color/camera_info', self.camera_info_callback, 10)
 
     def image_callback(self, msg):
         self.latest_frame = msg
