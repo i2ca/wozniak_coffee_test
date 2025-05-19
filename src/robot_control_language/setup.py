@@ -39,6 +39,7 @@ setup(
             'realsense_llm = robot_control_language.realsense_llm:main',
             'llm_node = robot_control_language.llm_node:main',
             'tools_node = robot_control_language.tools_node:main',
+            'chat_node = robot_control_language.llm_client:main',
         ],
     },
 )

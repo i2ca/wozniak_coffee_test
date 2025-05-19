@@ -10,6 +10,7 @@ import queue
 from robot_control_language.llm import OpenAIAgent
 from robot_control_language.coffee.tools import hercules_functions as available_functions
 from wozniak_interfaces.srv import TriggerLLM
+from openai.types.chat.chat_completion_message import ChatCompletionMessage
 
 
 class MultimodalLLMNode(Node):
@@ -29,7 +30,7 @@ class MultimodalLLMNode(Node):
         # Subscription to the RealSense `image_raw` topic
         self.subscription = self.create_subscription(
             Image,
-            f'/{camera_namespace}/{camera_name}/color/image_raw',
+            f'/{camera_namespace}/color/image_raw',
             self.image_callback,
             10
         )
@@ -45,7 +46,7 @@ class MultimodalLLMNode(Node):
 
         # Initialize the OpenAIAgent
         api_key = os.getenv('OPENAI_API_KEY')
-        self.agent = OpenAIAgent(model, available_functions, settings_file, self, api_key=api_key)
+        self.agent = OpenAIAgent(model, available_functions, settings_file, self)
 
         # Initialize the service to trigger the OpenAI agent
         self.trigger_llm_srv = self.create_service(TriggerLLM, 'trigger_llm', self.trigger_llm)
@@ -74,7 +75,17 @@ class MultimodalLLMNode(Node):
             llm_response = self.agent.invoke(request.message, image_path)
             self.get_logger().info(f"Response from OpenAI: {llm_response}")
             response.success = True
-            response.message = llm_response[0].content
+            response.message = ""
+
+            for item in llm_response:
+                if isinstance(item, ChatCompletionMessage):
+                    response.message += item.content
+                    if item.tool_calls is None:
+                        continue
+                    for tool in item.tool_calls:
+                        response.message += f"Tool called: {tool.function.name}, Args: {tool.function.arguments}, Call ID: {tool.id}"
+                else:
+                    response.message += f"Tool responded: {item['name']}, Response: {item['content']}, Call ID: {item['tool_call_id']}"
         except Exception as e:
             self.get_logger().error(f"Failed to send data to OpenAI: {e}")
             response.success = False

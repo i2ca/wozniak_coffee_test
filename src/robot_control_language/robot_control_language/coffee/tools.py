@@ -16,7 +16,7 @@ def pick_object(node: Node, object: str):
 
     # Create a request (we're using Trigger, which doesn't take specific input)
     request = PickObject.Request()
-    request.object = object
+    request.target_object = object
 
     # Call the service and wait for the result
     future = client.call_async(request)
@@ -29,7 +29,6 @@ def pick_object(node: Node, object: str):
     else:
         node.get_logger().error("Service call failed")
         return "Service call failed"
-    return ""
 
 
 hercules_functions = {
