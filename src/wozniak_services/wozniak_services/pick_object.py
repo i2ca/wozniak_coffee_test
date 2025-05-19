@@ -10,6 +10,7 @@ import tf_transformations as transformations
 import tf2_ros
 from cv_bridge import CvBridge
 import cv2
+import traceback
 
 import rclpy
 from rclpy.node import Node
@@ -29,10 +30,15 @@ class PickObjectService(Node):
         # Imagem com as marcações acumuladas
         self.marked_image = None
         
+        # Flags para controle de inicialização
+        self.rgb_initialized = False
+        self.depth_initialized = False
+        self.camera_info_initialized = False
+        
         self.create_subscription(Image, '/camera/color/image_raw', self.image_callback, 10)
-        self.create_subscription(Image, '/camera/aligned_depth_to_color/image_raw', self.depth_callback, 10)
-        self.create_subscription(CameraInfo, '/camera/aligned_depth_to_color/camera_info', self.camera_info_callback, 10)
-        self.get_logger().info('Pick object service initialized. Waiting for camera data...')
+        self.create_subscription(Image, '/camera/depth/image_rect_raw', self.depth_callback, 10)
+        self.create_subscription(CameraInfo, '/camera/depth/camera_info', self.camera_info_callback, 10)
+        self.get_logger().info('Serviço pick_object iniciado. Aguardando dados da câmera...')
 
     def image_callback(self, msg):
         try:
@@ -40,20 +46,22 @@ class PickObjectService(Node):
             # Sempre atualiza a imagem marcada com a nova imagem
             self.marked_image = self.bridge.imgmsg_to_cv2(msg, msg.encoding)
             
-            if not hasattr(self, 'first_image_received'):
-                self.first_image_received = True
-                self.get_logger().info(f'Primeira imagem RGB recebida. Encoding: {msg.encoding}, Dimensões: {msg.width}x{msg.height}')
+            if not self.rgb_initialized:
+                self.rgb_initialized = True
+                self.get_logger().info('✓ Câmera RGB inicializada')
+                self._check_all_initialized()
+                
         except Exception as e:
             self.get_logger().error(f'Error in image callback: {str(e)}')
-
 
     def depth_callback(self, msg):
         """Callback para imagem de profundidade"""
         try:
             self.latest_depth_frame = self.bridge.imgmsg_to_cv2(msg, msg.encoding)
-            if not hasattr(self, 'first_depth_received'):
-                self.first_depth_received = True
-                self.get_logger().info('Primeira imagem de profundidade recebida')
+            if not self.depth_initialized:
+                self.depth_initialized = True
+                self.get_logger().info('✓ Câmera de profundidade inicializada')
+                self._check_all_initialized()
         except Exception as e:
             self.get_logger().error(f'Error in depth callback: {str(e)}')
 
@@ -61,11 +69,16 @@ class PickObjectService(Node):
         """Callback para informações da câmera"""
         try:
             self.camera_info = msg
-            if not hasattr(self, 'first_info_received'):
-                self.first_info_received = True
-                self.get_logger().info('Primeiras informações da câmera recebidas')
+            if not self.camera_info_initialized:
+                self.camera_info_initialized = True
+                self.get_logger().info('✓ Informações da câmera recebidas')
+                self._check_all_initialized()
         except Exception as e:
             self.get_logger().error(f'Error in camera info callback: {str(e)}')
+            
+    def _check_all_initialized(self):
+        if self.rgb_initialized and self.depth_initialized and self.camera_info_initialized:
+            self.get_logger().info('✓ Sistema totalmente inicializado e pronto para uso')
 
     def pick_object_callback(self, request, response):
         self.get_logger().info('Incoming request to pick object: %s' % (request.target_object))
@@ -77,9 +90,10 @@ class PickObjectService(Node):
         self.get_logger().info(f'- Camera info: {"Available" if self.camera_info is not None else "Not available"}')
         
         if self.latest_frame is None or self.latest_depth_frame is None or self.camera_info is None:
-            self.get_logger().error('No camera data available')
+            msg = 'Dados da câmera não disponíveis. Verifique se a RealSense está conectada e funcionando.'
+            self.get_logger().error(msg)
             response.success = False
-            response.message = 'No camera data available'
+            response.message = msg
             return response
 
         try:
@@ -89,7 +103,13 @@ class PickObjectService(Node):
             response.success = True
             response.message = 'Object picked'
         except Exception as e:
-            self.get_logger().warn(f'Failed to pick object: {str(e)}')
+            # Se for erro de objeto não encontrado, apenas loga a mensagem informativa
+            if "não encontrou o objeto" in str(e):
+                self.get_logger().error(f'Failed to pick object: {str(e)}')
+            else:
+                # Para outros erros, mantém o traceback
+                self.get_logger().error(f'Failed to pick object: {str(e)}')
+                self.get_logger().error(f'Stack trace: {traceback.format_exc()}')
             response.success = False
             response.message = str(e)
         
@@ -136,8 +156,8 @@ class PickObjectService(Node):
         
         matches = re.findall(r'x="(\d+\.\d+)" y="(\d+\.\d+)"', result)
         if not matches:
-            self.get_logger().warn(f'Objeto {target_object} não encontrado na imagem')
-            raise Exception(f"Objeto {target_object} não encontrado")
+            self.get_logger().info(f'MolmoAI não encontrou o objeto "{target_object}" na imagem atual')
+            raise Exception(f'MolmoAI não encontrou o objeto "{target_object}" na imagem atual. Por favor, verifique se o objeto está visível para a câmera.')
             
         x, y = matches[0]
         x = float(x)
@@ -180,14 +200,34 @@ class PickObjectService(Node):
         return x_pixel, y_pixel
     
     def get_3d_position(self, x, y):
+        """
+        Converte coordenadas da imagem RGB para coordenadas 3D usando a imagem de profundidade
+        """
+        # Ajusta as coordenadas da imagem RGB para a resolução da imagem de profundidade
+        depth_height, depth_width = self.latest_depth_frame.shape
+        rgb_height = self.latest_frame.height
+        rgb_width = self.latest_frame.width
+        
+        # Converte as coordenadas proporcionalmente
+        x_depth = int((x / rgb_width) * depth_width)
+        y_depth = int((y / rgb_height) * depth_height)
+        
+        # Garante que as coordenadas estão dentro dos limites
+        x_depth = min(max(0, x_depth), depth_width - 1)
+        y_depth = min(max(0, y_depth), depth_height - 1)
+        
         fx = self.camera_info.k[0]
         fy = self.camera_info.k[4]
         cx = self.camera_info.k[2]
         cy = self.camera_info.k[5]
-        depth = self.latest_depth_frame[y, x] * 0.001
+        
+        depth = self.latest_depth_frame[y_depth, x_depth] * 0.001  # converte para metros
+        
+        # Usa as coordenadas originais da imagem RGB para o cálculo 3D
         position_x = (x - cx) * depth / fx
         position_y = (y - cy) * depth / fy
         position_z = depth
+        
         return (position_x, position_y, position_z)
     
     def publish_transform(self, position):
@@ -227,7 +267,6 @@ class PickObjectService(Node):
         #publish
         self.get_logger().info("Calling Coord service")
         future = self.client.call_async(coord_request)
-
 
 def main(args=None):
     rclpy.init(args=args)
