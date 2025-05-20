@@ -18,15 +18,6 @@ namespace RosSharp.RosBridgeClient.MessageTypes
 
         //private String objectRequest
 
-        [Range(0f, 1f)]
-        public float offsetX;
-
-        [Range(0f, 1f)]
-        public float offsetY;
-
-        [Range(0f, 1f)]
-        public float offsetZ;
-
         private Queue<Coord.CoordRequest> requestsQueue = new Queue<Coord.CoordRequest>();
 
         // Declare `foundObject` as a class-level variable
@@ -39,9 +30,7 @@ namespace RosSharp.RosBridgeClient.MessageTypes
 
         protected override bool ServiceCallHandler(Coord.CoordRequest request, out Coord.CoordResponse response)
         {
-            Debug.Log("REQUEST X:" + request.x);
-            Debug.Log("REQUEST Y:" + request.y);
-            Debug.Log("REQUEST Z:" + request.z);
+            Debug.Log("REQUEST COORDINATES:" + "(" + request.x + ", " + request.y + ", " + request.z + ");");
 
             float coordX = request.x;
 
@@ -59,18 +48,17 @@ namespace RosSharp.RosBridgeClient.MessageTypes
                 var request = requestsQueue.Dequeue(); // dequeuing to process request
                 ProcessRequest(request);
             }
-            
         }
 
         private void ProcessRequest(Coord.CoordRequest request)
         {
             Vector3 posReceived = new Vector3(request.x, -request.y, request.z);
 
-            Vector3 newPos = posReceived + new Vector3(-offsetX, -offsetY, offsetZ);
-
-            fakeObj.transform.localPosition = newPos;
+            fakeObj.transform.localPosition = posReceived;
 
             ball.transform.position = fakeObj.transform.position;
+
+            // atualiza a posição no canvas
         }
 
 

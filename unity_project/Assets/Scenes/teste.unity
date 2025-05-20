@@ -468,6 +468,8 @@ GameObject:
   m_Component:
   - component: {fileID: 227003783}
   - component: {fileID: 227003786}
+  - component: {fileID: 227003788}
+  - component: {fileID: 227003787}
   m_Layer: 0
   m_Name: ScriptsHolder
   m_TagString: Untagged
@@ -497,7 +499,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 227003781}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 579f9cc2b9aba534386b391c962a4fac, type: 3}
   m_Name: 
@@ -507,6 +509,39 @@ MonoBehaviour:
   obj2: cup
   obj3: coffee maker
   anchor_name: OTHER
+--- !u!114 &227003787
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 227003781}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d6e8b022dbe2f2040bb52e42fbd4693f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  instructionText: {fileID: 355262357}
+  curCoordinate: {fileID: 662957492}
+  handCoordinate: {fileID: 762408979}
+  objCoordinate: {fileID: 1853002001}
+--- !u!114 &227003788
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 227003781}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9c4fba64ac423e45a8205161e3e3318, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  redDot: {fileID: 1054331698}
+  confetti: {fileID: 6816982206901608895, guid: e60aefbf115498d498f41fe7c89afc91, type: 3}
+  hand: {fileID: 806082940}
+  OVRCamera: {fileID: 943021517}
+  canvas: {fileID: 227003787}
 --- !u!1 &233418857
 GameObject:
   m_ObjectHideFlags: 0
@@ -525,7 +560,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!114 &233418858
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1049,7 +1084,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: --
+  m_text: ++
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 9df320faf15905d4687a6101d62b7915, type: 2}
   m_sharedMaterial: {fileID: 5890431744924803391, guid: 9df320faf15905d4687a6101d62b7915, type: 2}
@@ -1579,7 +1614,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: --
+  m_text: ++
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 9df320faf15905d4687a6101d62b7915, type: 2}
   m_sharedMaterial: {fileID: 5890431744924803391, guid: 9df320faf15905d4687a6101d62b7915, type: 2}
@@ -1832,10 +1867,10 @@ MonoBehaviour:
   _whenActivated:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 2018825547}
         m_TargetAssemblyTypeName: RosSharp.RosBridgeClient.MessageTypes.WozniakService,
           Assembly-CSharp
-        m_MethodName: StartTask
+        m_MethodName: NextTask
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -2765,10 +2800,10 @@ MonoBehaviour:
   _whenActivated:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 2018825547}
         m_TargetAssemblyTypeName: RosSharp.RosBridgeClient.MessageTypes.WozniakService,
           Assembly-CSharp
-        m_MethodName: StartTask
+        m_MethodName: NextTask
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -3564,7 +3599,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: --
+  m_text: ++
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 9df320faf15905d4687a6101d62b7915, type: 2}
   m_sharedMaterial: {fileID: 5890431744924803391, guid: 9df320faf15905d4687a6101d62b7915, type: 2}
@@ -3689,6 +3724,7 @@ GameObject:
   - component: {fileID: 2018825545}
   - component: {fileID: 2018825544}
   - component: {fileID: 2018825546}
+  - component: {fileID: 2018825547}
   m_Layer: 0
   m_Name: RosHolder
   m_TagString: Untagged
@@ -3711,7 +3747,7 @@ MonoBehaviour:
   SecondsTimeout: 10
   Serializer: 1
   protocol: 0
-  RosBridgeServerUrl: ws://192.168.0.221:9090
+  RosBridgeServerUrl: ws://192.168.0.191:9090
 --- !u!4 &2018825545
 Transform:
   m_ObjectHideFlags: 0
@@ -3743,9 +3779,21 @@ MonoBehaviour:
   ball: {fileID: 1054331698}
   OVR: {fileID: 943021517}
   fakeObj: {fileID: 1715103288}
-  offsetX: 0.024
-  offsetY: 0.119
-  offsetZ: 0.045
+--- !u!114 &2018825547
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2018825543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 627bdbb68c53a5341856ac0c5a4daf79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ServiceName: HighlightObject
+  gameControl: {fileID: 227003788}
+  canvas: {fileID: 227003787}
 --- !u!1 &2088905365
 GameObject:
   m_ObjectHideFlags: 0
