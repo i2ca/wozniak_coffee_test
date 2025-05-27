@@ -509,6 +509,7 @@ MonoBehaviour:
   obj2: cup
   obj3: coffee maker
   anchor_name: OTHER
+  sceneObjects: []
 --- !u!114 &227003787
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -543,7 +544,7 @@ MonoBehaviour:
   hand: {fileID: 806082940}
   OVRCamera: {fileID: 943021517}
   _canvas: {fileID: 227003787}
-  _wozniak: {fileID: 2018825547}
+  _triggerllm: {fileID: 0}
 --- !u!1 &233418857
 GameObject:
   m_ObjectHideFlags: 0
@@ -1869,7 +1870,7 @@ MonoBehaviour:
   _whenActivated:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 2018825547}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: RosSharp.RosBridgeClient.MessageTypes.WozniakService,
           Assembly-CSharp
         m_MethodName: NextTask
@@ -2802,7 +2803,7 @@ MonoBehaviour:
   _whenActivated:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 2018825547}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: RosSharp.RosBridgeClient.MessageTypes.WozniakService,
           Assembly-CSharp
         m_MethodName: NextTask
@@ -3781,6 +3782,9 @@ MonoBehaviour:
   ball: {fileID: 1054331698}
   OVR: {fileID: 943021517}
   fakeObj: {fileID: 1715103288}
+  offsetX: 0
+  offsetY: 0
+  offsetZ: 0
   _canvas: {fileID: 227003787}
 --- !u!114 &2018825547
 MonoBehaviour:
@@ -3791,12 +3795,12 @@ MonoBehaviour:
   m_GameObject: {fileID: 2018825543}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 627bdbb68c53a5341856ac0c5a4daf79, type: 3}
+  m_Script: {fileID: 11500000, guid: ec51e1e9008909e4c95b78c31fa3cce2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  ServiceName: HighlightObject
+  ServiceName: TriggerLLM
   _gameControl: {fileID: 227003788}
-  canvas: {fileID: 227003787}
+  _canvas: {fileID: 227003787}
 --- !u!1 &2088905365
 GameObject:
   m_ObjectHideFlags: 0
