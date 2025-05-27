@@ -9,25 +9,25 @@
 
 
 
-namespace RosSharp.RosBridgeClient.MessageTypes.PickObject
+namespace RosSharp.RosBridgeClient.MessageTypes.WozniakInterfaces
 {
-    public class PickObjectResponse : Message
+    public class TriggerLLMResponse : Message
     {
-        public const string RosMessageName = "PickObject/PickObject";
+        public const string RosMessageName = "WozniakInterfaces/TriggerLLM";
 
-        public bool success { get; set; }
         public string message { get; set; }
+        public bool success { get; set; }
 
-        public PickObjectResponse()
+        public TriggerLLMResponse()
         {
-            this.success = false;
             this.message = "";
+            this.success = false;
         }
 
-        public PickObjectResponse(bool success, string message)
+        public TriggerLLMResponse(string message, bool success)
         {
-            this.success = success;
             this.message = message;
+            this.success = success;
         }
     }
 }

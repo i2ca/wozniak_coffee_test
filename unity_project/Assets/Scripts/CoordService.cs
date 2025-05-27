@@ -14,14 +14,21 @@ namespace RosSharp.RosBridgeClient.MessageTypes
         public Transform OVR;
         public GameObject fakeObj;
 
-        private string[] sceneObjects;
-
-        //private String objectRequest
-
         private Queue<Coord.CoordRequest> requestsQueue = new Queue<Coord.CoordRequest>();
 
-        // Declare `foundObject` as a class-level variable
-        private Transform foundObject;
+        // Red dot calibration offset 
+        [Range(-1f, 1f)]
+        public float offsetX;
+
+        [Range(-1f, 1f)]
+        public float offsetY;
+
+        [Range(-1f, 1f)]
+        public float offsetZ;
+
+
+        // Scripts 
+        [SerializeField] CanvasHandler _canvas;
 
         void Start()
         {
@@ -52,15 +59,22 @@ namespace RosSharp.RosBridgeClient.MessageTypes
 
         private void ProcessRequest(Coord.CoordRequest request)
         {
+            // Update red dot position
             Vector3 posReceived = new Vector3(request.x, -request.y, request.z);
 
-            fakeObj.transform.localPosition = posReceived;
+            Vector3 offset = new Vector3(-offsetX, -offsetY, offsetZ);
+
+            Vector3 newPos = posReceived + offset;
+
+            fakeObj.transform.localPosition = newPos;
 
             ball.transform.position = fakeObj.transform.position;
 
-            // atualiza a posição no canvas
-        }
+            _canvas.UpdateObjectCoordinate(ball.transform.position);
 
+            // Update canvas instruction
+            _canvas.UpdateInstruction(request.instruction);
+        }
 
     }       
     

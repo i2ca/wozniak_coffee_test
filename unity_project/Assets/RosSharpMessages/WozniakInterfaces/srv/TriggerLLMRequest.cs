@@ -8,25 +8,21 @@
  */
 
 
-
-namespace RosSharp.RosBridgeClient.MessageTypes.Instructions
+namespace RosSharp.RosBridgeClient.MessageTypes.WozniakInterfaces
 {
-    public class InstructionsResponse : Message
+    public class TriggerLLMRequest : Message
     {
-        public const string RosMessageName = "Instructions/Instructions";
+        public const string RosMessageName = "WozniakInterfaces/TriggerLLM";
 
-        public bool success { get; set; }
         public string message { get; set; }
 
-        public InstructionsResponse()
+        public TriggerLLMRequest()
         {
-            this.success = false;
             this.message = "";
         }
 
-        public InstructionsResponse(bool success, string message)
+        public TriggerLLMRequest(string message)
         {
-            this.success = success;
             this.message = message;
         }
     }

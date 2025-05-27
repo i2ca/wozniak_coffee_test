@@ -539,9 +539,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   redDot: {fileID: 1054331698}
   confetti: {fileID: 6816982206901608895, guid: e60aefbf115498d498f41fe7c89afc91, type: 3}
+  canvas: {fileID: 0}
   hand: {fileID: 806082940}
   OVRCamera: {fileID: 943021517}
-  canvas: {fileID: 227003787}
+  _canvas: {fileID: 227003787}
+  _wozniak: {fileID: 2018825547}
 --- !u!1 &233418857
 GameObject:
   m_ObjectHideFlags: 0
@@ -3779,6 +3781,7 @@ MonoBehaviour:
   ball: {fileID: 1054331698}
   OVR: {fileID: 943021517}
   fakeObj: {fileID: 1715103288}
+  _canvas: {fileID: 227003787}
 --- !u!114 &2018825547
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3792,7 +3795,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   ServiceName: HighlightObject
-  gameControl: {fileID: 227003788}
+  _gameControl: {fileID: 227003788}
   canvas: {fileID: 227003787}
 --- !u!1 &2088905365
 GameObject:

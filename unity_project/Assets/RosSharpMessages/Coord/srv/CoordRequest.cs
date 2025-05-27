@@ -13,21 +13,24 @@ namespace RosSharp.RosBridgeClient.MessageTypes.Coord
 {
     public class CoordRequest : Message
     {
-        public const string RosMessageName = "wozniak_interfaces/Coord";
+        public const string RosMessageName = "Coord/Coord";
 
+        public string instruction { get; set; }
         public float x { get; set; }
         public float y { get; set; }
         public float z { get; set; }
 
         public CoordRequest()
         {
+            this.instruction = "";
             this.x = 0.0f;
             this.y = 0.0f;
             this.z = 0.0f;
         }
 
-        public CoordRequest(float x, float y, float z)
+        public CoordRequest(string instruction, float x, float y, float z)
         {
+            this.instruction = instruction;
             this.x = x;
             this.y = y;
             this.z = z;

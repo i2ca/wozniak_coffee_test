@@ -13,7 +13,7 @@ namespace RosSharp.RosBridgeClient.MessageTypes.Coord
 {
     public class CoordResponse : Message
     {
-        public const string RosMessageName = "wozniak_interfaces/Coord";
+        public const string RosMessageName = "Coord/Coord";
 
         public bool success { get; set; }
 
