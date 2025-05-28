@@ -12,11 +12,6 @@ namespace RosSharp.RosBridgeClient.MessageTypes
 {
     public class TriggerLLMService : UnityServiceProvider<WozniakInterfaces.TriggerLLMRequest, WozniakInterfaces.TriggerLLMResponse>
     {
-        // Control variables
-        private bool sceneLoaded = false;
-        private bool started = false;
-        private bool done = false;
-
         // Queue to handle the service requests 
         private Queue<WozniakInterfaces.TriggerLLMRequest> requestsQueue = new Queue<WozniakInterfaces.TriggerLLMRequest>();
 
@@ -62,34 +57,6 @@ namespace RosSharp.RosBridgeClient.MessageTypes
             }
         }
 
-
-        /*public void NextTask()
-        {
-            if (!started)
-            {
-                Debug.Log("I am ready to start.");
-
-                // Criação da requisição para o serviço `PickObject`
-                var request = new PickObject.PickObjectRequest
-                {
-                    target_object = "I am ready :)" // Defina o nome do objeto a ser pego
-                };
-
-                GetComponent<RosConnector>().RosSocket.CallService<PickObject.PickObjectRequest, PickObject.PickObjectResponse>("/pick_object", ServiceResponseHandler, request);
-
-                started = true;
-            }
-            else
-            {
-                // Criação da requisição para o serviço `PickObject`
-                var request = new PickObject.PickObjectRequest
-                {
-                    target_object = "Okay" // Defina o nome do objeto a ser pego
-                };
-
-                GetComponent<RosConnector>().RosSocket.CallService<PickObject.PickObjectRequest, PickObject.PickObjectResponse>("/pick_object", ServiceResponseHandler, request);
-            }
-        }*/
     }
 
 }

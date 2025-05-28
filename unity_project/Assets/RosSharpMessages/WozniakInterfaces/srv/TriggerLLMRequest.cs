@@ -12,7 +12,7 @@ namespace RosSharp.RosBridgeClient.MessageTypes.WozniakInterfaces
 {
     public class TriggerLLMRequest : Message
     {
-        public const string RosMessageName = "WozniakInterfaces/TriggerLLM";
+        public const string RosMessageName = "wozniak_interfaces/TriggerLLM";
 
         public string message { get; set; }
 

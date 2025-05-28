@@ -5,3 +5,9 @@ install
 log
 .vscode
 venv
+
+unity_project.zip
+
+unity_project_old/
+
+unity_project_old.zip

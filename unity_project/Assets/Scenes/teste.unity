@@ -467,7 +467,6 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 227003783}
-  - component: {fileID: 227003786}
   - component: {fileID: 227003788}
   - component: {fileID: 227003787}
   m_Layer: 0
@@ -492,24 +491,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &227003786
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 227003781}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 579f9cc2b9aba534386b391c962a4fac, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  interactablePrefab: {fileID: 9164060199768234283, guid: a9308c722aee21d409b5ca60da7128e6, type: 3}
-  obj1: sweetener
-  obj2: cup
-  obj3: coffee maker
-  anchor_name: OTHER
-  sceneObjects: []
 --- !u!114 &227003787
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -540,11 +521,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   redDot: {fileID: 1054331698}
   confetti: {fileID: 6816982206901608895, guid: e60aefbf115498d498f41fe7c89afc91, type: 3}
-  canvas: {fileID: 0}
+  canvas: {fileID: 233418861}
   hand: {fileID: 806082940}
   OVRCamera: {fileID: 943021517}
+  OVRCamera_Ghost: {fileID: 1423871473}
   _canvas: {fileID: 227003787}
-  _triggerllm: {fileID: 0}
+  _triggerllm: {fileID: 2018825547}
 --- !u!1 &233418857
 GameObject:
   m_ObjectHideFlags: 0
@@ -990,6 +972,9 @@ PrefabInstance:
       insertIndex: -1
       addedObject: {fileID: 686425703}
     - targetCorrespondingSourceObject: {fileID: 459718, guid: 126d619cf4daa52469682f85c1378b4a, type: 3}
+      insertIndex: 2
+      addedObject: {fileID: 1423871473}
+    - targetCorrespondingSourceObject: {fileID: 459718, guid: 126d619cf4daa52469682f85c1378b4a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1772887858}
     - targetCorrespondingSourceObject: {fileID: 459718, guid: 126d619cf4daa52469682f85c1378b4a, type: 3}
@@ -998,9 +983,6 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 459718, guid: 126d619cf4daa52469682f85c1378b4a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 7420885355340940801}
-    - targetCorrespondingSourceObject: {fileID: 400002, guid: 126d619cf4daa52469682f85c1378b4a, type: 3}
-      insertIndex: -1
-      addedObject: {fileID: 1715103289}
     - targetCorrespondingSourceObject: {fileID: 482130, guid: 126d619cf4daa52469682f85c1378b4a, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1745846232}
@@ -1870,9 +1852,8 @@ MonoBehaviour:
   _whenActivated:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: RosSharp.RosBridgeClient.MessageTypes.WozniakService,
-          Assembly-CSharp
+      - m_Target: {fileID: 227003788}
+        m_TargetAssemblyTypeName: GameControl, Assembly-CSharp
         m_MethodName: NextTask
         m_Mode: 1
         m_Arguments:
@@ -2626,6 +2607,38 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1349661962}
   m_CullTransparentMesh: 1
+--- !u!1 &1423871472
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1423871473}
+  m_Layer: 0
+  m_Name: CenterEyeAnchor_Ghost
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1423871473
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1423871472}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1715103289}
+  m_Father: {fileID: 591455539}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1440526099
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2803,9 +2816,8 @@ MonoBehaviour:
   _whenActivated:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: RosSharp.RosBridgeClient.MessageTypes.WozniakService,
-          Assembly-CSharp
+      - m_Target: {fileID: 227003788}
+        m_TargetAssemblyTypeName: GameControl, Assembly-CSharp
         m_MethodName: NextTask
         m_Mode: 1
         m_Arguments:
@@ -3104,12 +3116,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1715103288}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 943021517}
+  m_Father: {fileID: 1423871473}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &1721501765
 PrefabInstance:
@@ -3782,7 +3794,7 @@ MonoBehaviour:
   ball: {fileID: 1054331698}
   OVR: {fileID: 943021517}
   fakeObj: {fileID: 1715103288}
-  offsetX: 0
+  offsetX: -0
   offsetY: 0
   offsetZ: 0
   _canvas: {fileID: 227003787}

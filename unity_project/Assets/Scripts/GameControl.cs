@@ -11,17 +11,18 @@ using Oculus.Interaction.Input;
 public class GameControl : MonoBehaviour
 {
     // Control variables 
-    bool started = true;
-    bool done = false;
+    private bool started = true;
+    private bool done = false;
 
     // Scene objects
-    public GameObject redDot;
-    public GameObject confetti;
-    public Transform canvas;
+    [SerializeField] GameObject redDot;
+    [SerializeField] GameObject confetti;
+    [SerializeField] Transform canvas;
 
-    // Hand parameters
-    public Hand hand;
-    public Transform OVRCamera;
+    // Oculus parameters
+    [SerializeField] Hand hand;
+    [SerializeField] Transform OVRCamera;
+    [SerializeField] Transform OVRCamera_Ghost;
     private Vector3 handPosition;
 
     // Scripts
@@ -87,16 +88,12 @@ public class GameControl : MonoBehaviour
         return done;
     }
 
-    public void ProcessScene(string obj, string instruction)
-    {
-        if (!started) return;
-        
-        if (obj == "done") FinishGame();
-        else _canvas.UpdateInstruction(instruction);
-    }
-
     public void NextTask()
     {
+        Debug.Log("Next task chamada");
+
+        CopyCenterEyePosition();
+
         if (!started)
         {
             Debug.Log("I am ready to start.");
@@ -111,9 +108,17 @@ public class GameControl : MonoBehaviour
         {
             string message = "Okay";
 
+            Debug.Log("Message sent:" + message);
+
             _triggerllm.TriggerLLMSendRequest(message);
         } 
         
+    }
+    
+    private void CopyCenterEyePosition()
+    {
+        OVRCamera_Ghost.position = OVRCamera.position;
+        OVRCamera_Ghost.rotation = OVRCamera.rotation;
     }
 
     public void FinishGame()

@@ -30,8 +30,15 @@ namespace RosSharp.RosBridgeClient.MessageTypes
         // Scripts 
         [SerializeField] CanvasHandler _canvas;
 
+        void Awake()
+        {
+            Debug.Log("CoordService: Awake chamado");
+        }
+
+
         void Start()
         {
+            Debug.Log("CoordService: Start chamado");
             base.Start(); // Inicializa a classe base
         }
 
