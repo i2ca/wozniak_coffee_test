@@ -4,6 +4,7 @@ import yaml
 from tenacity import retry, wait_random_exponential, stop_after_attempt
 import json
 import base64
+import os
 
 
 class OpenAIAgent():
@@ -16,16 +17,16 @@ class OpenAIAgent():
     available_functions: dict
 
 
-    def __init__(self, model, available_functions, settings_file_path, api_key=None, api_base='https://api.openai.com/v1'):
+    def __init__(self, model, available_functions, settings_file_path, node, api_key=None, api_base='https://api.openai.com/v1'):
         if api_key is None:
-            self.openai_client = OpenAI()
-        else:
-            self.openai_client = OpenAI(api_key=api_key, base_url=api_base)
+            self.api_key = os.getenv("OPENAI_API_KEY")
+        self.openai_client = OpenAI(api_key=api_key, base_url=api_base)
         self.model = model
         self.system_prompt, self.tools = self._load_settings(settings_file_path)
         self.available_functions = available_functions
         self.chat_history = [{'role': 'system', 'content': self.system_prompt}]
-    
+        self.node = node
+
 
     def _load_settings(self, settings_file):
         with open(settings_file, 'r') as file:
@@ -66,16 +67,18 @@ class OpenAIAgent():
 
 
     def _execute_tool_call(self, tool_call):
+        self.node.get_logger().info(f"Call function: {tool_call.function.name}")
         function_name = tool_call.function.name
         function_to_call = self.available_functions[function_name]
         function_args = json.loads(tool_call.function.arguments)
-        function_response = function_to_call(**function_args)
+        function_response = function_to_call(node=self.node, **function_args)
         tool_response = {
             "tool_call_id": tool_call.id,
             "role": "tool",
             "name": function_name,
             "content": function_response,
         }
+        self.node.get_logger().info(f"Function response: {tool_response}")
         self.chat_history.append(tool_response)
 
 
@@ -83,11 +86,19 @@ class OpenAIAgent():
         self._add_user_message_to_chat_history(text, image_path)
         new_message_index = len(self.chat_history)
         while True:
-            response_message = self._chat_completion_request().choices[0].message
+            response = self._chat_completion_request()
+            if isinstance(response, Exception):
+                self.node.get_logger().error(f"Error during OpenAI API request: {response}")
+                # Decide how to handle the exception: re-raise, return error, etc.
+                # For now, let's re-raise to make it visible to the caller
+                raise response
+            
+            response_message = response.choices[0].message
+            self.node.get_logger().info(f"response_message: {response_message}")
             tool_calls = response_message.tool_calls
             self.chat_history.append(response_message)
             if tool_calls is None:
-                break
-            for tool_call in tool_calls:
-                self._execute_tool_call(tool_call)
+               break
+            for tool_call in response_message.tool_calls:
+               self._execute_tool_call(tool_call)
         return self.chat_history[new_message_index:]

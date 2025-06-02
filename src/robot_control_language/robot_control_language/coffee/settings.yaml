@@ -1,15 +1,14 @@
-system_prompt: You are a robot responsible for making me a cup of coffee.
-
+system_prompt: Nada
 tools:
   - type: function
     function:
       name: pick_object
-      description: Pick the specified object
+      description: Solicita ao robô que identifique e aponte para um objeto visível na imagem.
       parameters:
         type: object
         properties:
           object:
             type: string
-            description: The object to be picked.
+            description: Nome do objeto a ser identificado na imagem.
         required:
           - object

@@ -1,4 +1,6 @@
 import re
+
+import numpy as np
 import rclpy.time
 from wozniak_interfaces.srv import PickObject
 from wozniak_interfaces.srv import Coord
@@ -10,6 +12,7 @@ import tf_transformations as transformations
 import tf2_ros
 from cv_bridge import CvBridge
 import cv2
+import traceback
 
 import rclpy
 from rclpy.node import Node
@@ -25,33 +28,94 @@ class PickObjectService(Node):
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
         self.srv = self.create_service(PickObject, 'pick_object', self.pick_object_callback)
         self.client = self.create_client(Coord, "Coord")
+
+        # Declaração dos parâmetros ajustáveis
+        self.declare_parameter('translation', [0.024, 0.119, 0.045])  # Deslocamento (m)
+        self.declare_parameter('rotation', [0.0, 0.0, 0.0])  # Rotação em graus (roll, pitch, yaw)
+        
+        # Imagem com as marcações acumuladas
+        self.marked_image = None
+        
+        # Flags para controle de inicialização
+        self.rgb_initialized = False
+        self.depth_initialized = False
+        self.camera_info_initialized = False
+        
         self.create_subscription(Image, '/camera/camera/color/image_raw', self.image_callback, 10)
         self.create_subscription(Image, '/camera/camera/aligned_depth_to_color/image_raw', self.depth_callback, 10)
         self.create_subscription(CameraInfo, '/camera/camera/aligned_depth_to_color/camera_info', self.camera_info_callback, 10)
+        self.get_logger().info('Serviço pick_object iniciado. Aguardando dados da câmera...')
 
     def image_callback(self, msg):
-        self.latest_frame = msg
+        try:
+            self.latest_frame = msg
+            # Sempre atualiza a imagem marcada com a nova imagem
+            self.marked_image = self.bridge.imgmsg_to_cv2(msg, msg.encoding)
+            
+            if not self.rgb_initialized:
+                self.rgb_initialized = True
+                self.get_logger().info('✓ Câmera RGB inicializada')
+                self._check_all_initialized()
+                
+        except Exception as e:
+            self.get_logger().error(f'Error in image callback: {str(e)}')
 
     def depth_callback(self, msg):
-        self.latest_depth_frame = self.bridge.imgmsg_to_cv2(msg, msg.encoding)
+        """Callback para imagem de profundidade"""
+        try:
+            self.latest_depth_frame = self.bridge.imgmsg_to_cv2(msg, msg.encoding)
+            if not self.depth_initialized:
+                self.depth_initialized = True
+                self.get_logger().info('✓ Câmera de profundidade inicializada')
+                self._check_all_initialized()
+        except Exception as e:
+            self.get_logger().error(f'Error in depth callback: {str(e)}')
 
     def camera_info_callback(self, msg):
-        self.camera_info = msg
+        """Callback para informações da câmera"""
+        try:
+            self.camera_info = msg
+            if not self.camera_info_initialized:
+                self.camera_info_initialized = True
+                self.get_logger().info('✓ Informações da câmera recebidas')
+                self._check_all_initialized()
+        except Exception as e:
+            self.get_logger().error(f'Error in camera info callback: {str(e)}')
+            
+    def _check_all_initialized(self):
+        if self.rgb_initialized and self.depth_initialized and self.camera_info_initialized:
+            self.get_logger().info('✓ Sistema totalmente inicializado e pronto para uso')
 
     def pick_object_callback(self, request, response):
-        self.get_logger().info('Incoming request to pick object: %s' % (request.object))
+        self.get_logger().info('Incoming request to pick object: %s' % (request.target_object))
+        
+        # Debug information
+        self.get_logger().info(f'Camera data status:')
+        self.get_logger().info(f'- Color image: {"Available" if self.latest_frame is not None else "Not available"}')
+        self.get_logger().info(f'- Depth image: {"Available" if self.latest_depth_frame is not None else "Not available"}')
+        self.get_logger().info(f'- Camera info: {"Available" if self.camera_info is not None else "Not available"}')
+        
         if self.latest_frame is None or self.latest_depth_frame is None or self.camera_info is None:
-            self.get_logger().error('No camera data available')
+            msg = 'Dados da câmera não disponíveis. Verifique se a RealSense está conectada e funcionando.'
+            self.get_logger().error(msg)
             response.success = False
-            response.message = 'No camera data available'
             return response
 
-        x, y = self.image_recognition(request.object)
-        position = self.get_3d_position(x, y)
-        self.publish_transform(position)
-    
-        response.success = True
-        response.message = 'Object picked'
+        try:
+            x, y = self.image_recognition(request.target_object)
+            position = self.get_3d_position(x, y)
+            self.publish_transform(position)
+            response.success = True
+        except Exception as e:
+            # Se for erro de objeto não encontrado, apenas loga a mensagem informativa
+            if "não encontrou o objeto" in str(e):
+                self.get_logger().error(f'Failed to pick object: {str(e)}')
+            else:
+                # Para outros erros, mantém o traceback
+                self.get_logger().error(f'Failed to pick object: {str(e)}')
+                self.get_logger().error(f'Stack trace: {traceback.format_exc()}')
+            response.success = False
+        
         return response
 
     def encode_latest_frame_base64(self):
@@ -65,84 +129,272 @@ class PickObjectService(Node):
 
         return base64_str
 
-    def image_recognition(self, object):
+    def image_recognition(self, target_object):
         # Call the OpenAI API to recognize the object. Return the coordinates of the object in percent.
-        client = OpenAI(base_url="http://10.9.8.252:8000/v1")
-        self.get_logger().info('Calling OpenAI API')
+        client = OpenAI(
+            base_url="http://10.9.8.252:8000/v1",
+            api_key="not-needed"
+        )
+        self.get_logger().info(f'Procurando objeto: {target_object}')
+        
+        # Verifica se temos uma imagem válida
+        if self.latest_frame is None:
+            self.get_logger().error('Nenhuma imagem disponível da câmera')
+            raise Exception("Nenhuma imagem disponível")
+            
+        self.get_logger().info('Convertendo imagem para base64...')
+        base64_image = self.encode_latest_frame_base64()
+        self.get_logger().info('Imagem convertida com sucesso')
+        
         response = client.chat.completions.create(
             messages=[{"role": "user", "content": [
-                            {"type": "text", "text": "Point to the " + object + " in this image."},
-                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{self.encode_latest_frame_base64()}"}}
+                            {"type": "text", "text": "Point to the " + target_object + " in this image."},
+                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{base64_image}"}}
                       ]}],
             model="lcad-ica",
             max_completion_tokens=300,
         )
-        result = response.choices[0].message.content
-        self.get_logger().info('OpenAI response: %s' % (result))
-        matches = re.findall(r'x="(\d+\.\d+)" y="(\d+\.\d+)"', result)
+        result = response.choices[0].message
+        self.get_logger().info(f'Resposta MolmoAI: {result}')
+        
+        # Extrai o conteúdo da mensagem para o regex
+        content_string = result.content
+        matches = re.findall(r'x="(\d+\.\d+)" y="(\d+\.\d+)"', content_string)
         if not matches:
-            raise Exception("Object not found")
+            self.get_logger().info(f'MolmoAI não encontrou o objeto "{target_object}" na imagem atual (conteúdo: {content_string})')
+            raise Exception(f'MolmoAI não encontrou o objeto "{target_object}" na imagem atual. Por favor, verifique se o objeto está visível para a câmera.')
+            
         x, y = matches[0]
         x = float(x)
         y = float(y)
         if x < 0 or x > 100 or y < 0 or y > 100:
-            raise Exception("Object not found")
+            self.get_logger().warn(f'Coordenadas inválidas para {target_object}: x={x}, y={y}')
+            raise Exception(f"Coordenadas inválidas para {target_object}")
+            
         x_pixel = int(float(x) * self.latest_frame.width / 100)
         y_pixel = int(float(y) * self.latest_frame.height / 100)
-        # Save image with point
-        cv_image = self.bridge.imgmsg_to_cv2(self.latest_frame, self.latest_frame.encoding)
-        cv2.circle(cv_image, (x_pixel, y_pixel), 5, (0, 255, 0), -1)
-        cv2.imwrite("/tmp/image.jpg", cv_image)
+        
+        # Atualiza a imagem com as marcações
+        try:
+            self.get_logger().info('Convertendo imagem ROS para OpenCV...')
+            
+            # Se não temos uma imagem marcada ainda, cria uma nova a partir do frame atual
+            if self.marked_image is None:
+                self.marked_image = self.bridge.imgmsg_to_cv2(self.latest_frame, self.latest_frame.encoding)
+            
+            self.get_logger().info('Desenhando marcações na imagem...')
+            
+            # Desenha círculo verde mais visível
+            cv2.circle(self.marked_image, (x_pixel, y_pixel), 10, (0, 255, 0), 2)
+            # Adiciona texto com nome do objeto
+            cv2.putText(self.marked_image, target_object, (x_pixel + 15, y_pixel), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+            
+            self.get_logger().info('Salvando imagem em /tmp/current_scene.jpg...')
+            success = cv2.imwrite("/tmp/current_scene.jpg", self.marked_image)
+            if success:
+                self.get_logger().info(f'Imagem salva com sucesso em /tmp/current_scene.jpg')
+            else:
+                self.get_logger().error('Falha ao salvar a imagem')
+                
+        except Exception as e:
+            self.get_logger().error(f'Erro ao processar/salvar imagem: {str(e)}')
+            raise e
+            
+        self.get_logger().info(f'Objeto {target_object} identificado em x={x_pixel}, y={y_pixel}')
         return x_pixel, y_pixel
     
     def get_3d_position(self, x, y):
+        """
+        Converte coordenadas da imagem RGB para coordenadas 3D usando a imagem de profundidade
+        """
+        # Ajusta as coordenadas da imagem RGB para a resolução da imagem de profundidade
+        depth_height, depth_width = self.latest_depth_frame.shape
+        rgb_height = self.latest_frame.height
+        rgb_width = self.latest_frame.width
+        
+        # Converte as coordenadas proporcionalmente
+        x_depth = int((x / rgb_width) * depth_width)
+        y_depth = int((y / rgb_height) * depth_height)
+        
+        # Garante que as coordenadas estão dentro dos limites
+        x_depth = min(max(0, x_depth), depth_width - 1)
+        y_depth = min(max(0, y_depth), depth_height - 1)
+        
         fx = self.camera_info.k[0]
         fy = self.camera_info.k[4]
         cx = self.camera_info.k[2]
         cy = self.camera_info.k[5]
-        depth = self.latest_depth_frame[y, x] * 0.001
+        
+        depth = self.latest_depth_frame[y_depth, x_depth] * 0.001  # converte para metros
+        
+        # Usa as coordenadas originais da imagem RGB para o cálculo 3D
         position_x = (x - cx) * depth / fx
         position_y = (y - cy) * depth / fy
         position_z = depth
+        
         return (position_x, position_y, position_z)
     
+    def apply_transformation(self, point, translation, rotation_euler):
+        """
+        Aplica uma transformação rígida (rotação + translação) a um ponto 3D.
+        
+        - point: tuple (x, y, z)
+        - translation: tuple (tx, ty, tz)
+        - rotation_euler: tuple (roll, pitch, yaw) em radianos
+        """
+        # Conversão dos ângulos de Euler para matriz de rotação
+        rotation_matrix = transformations.euler_matrix(*rotation_euler)[:3, :3]
+        
+        # Aplicar rotação
+        rotated_point = rotation_matrix.dot(np.array(point))
+        
+        # Aplicar translação
+        transformed_point = rotated_point + np.array(translation)
+        
+        return transformed_point
+    
+    # def publish_transform(self, position):
+    #     t = TransformStamped()
+    #     t.header.stamp = self.get_clock().now().to_msg()
+    #     t.header.frame_id = "camera_color_optical_frame"
+    #     t.child_frame_id = "detected_object"
+
+    #     t.transform.translation.x = position[0]
+    #     t.transform.translation.y = position[1]
+    #     t.transform.translation.z = position[2]
+
+    #     # No rotation needed, so set quaternion to identity
+    #     quat = transformations.quaternion_from_euler(0, 0, 0)
+    #     t.transform.rotation.x = quat[0]
+    #     t.transform.rotation.y = quat[1]
+    #     t.transform.rotation.z = quat[2]
+    #     t.transform.rotation.w = quat[3]
+
+    #     self.tf_broadcaster.sendTransform(t)
+
+    #     if not self.client:
+    #         self.get_logger().error("Coord client not available")
+    #         return
+        
+    #     # Calculate the offsets
+    #     x_offset = 0.024
+    #     y_offset = 0.119
+    #     z_offset = 0.045
+        
+    #     # Call the Coord service to get the coordinates
+    #     coord_request = Coord.Request()
+    #     coord_request.x = position[0] + x_offset
+    #     coord_request.y = position[1] + y_offset
+    #     coord_request.z = position[2] + z_offset
+        
+    #     #publish
+    #     self.get_logger().info("Calling Coord service")
+    #     future = self.client.call_async(coord_request)
+    
+    # def publish_transform(self, position):
+    #     # Defina aqui os offsets de translação (em metros)
+    #     translation = (0.024, 0.119, 0.045)  # exemplo
+
+    #     # Defina aqui os ângulos de rotação (em radianos)
+    #     rotation_euler = (
+    #         np.deg2rad(0),   # roll
+    #         np.deg2rad(0),   # pitch
+    #         np.deg2rad(0)    # yaw
+    #     )
+        
+    #     # Aplica transformação
+    #     transformed_position = self.apply_transformation(position, translation, rotation_euler)
+        
+    #     # Publica no TF
+    #     t = TransformStamped()
+    #     t.header.stamp = self.get_clock().now().to_msg()
+    #     t.header.frame_id = "camera_color_optical_frame"
+    #     t.child_frame_id = "detected_object"
+
+    #     t.transform.translation.x = transformed_position[0]
+    #     t.transform.translation.y = transformed_position[1]
+    #     t.transform.translation.z = transformed_position[2]
+
+    #     # Converte a rotação de Euler para quaternion
+    #     quat = transformations.quaternion_from_euler(*rotation_euler)
+    #     t.transform.rotation.x = quat[0]
+    #     t.transform.rotation.y = quat[1]
+    #     t.transform.rotation.z = quat[2]
+    #     t.transform.rotation.w = quat[3]
+
+    #     self.tf_broadcaster.sendTransform(t)
+
+    #     # Também envia para o serviço Coord com a mesma transformação
+    #     if not self.client:
+    #         self.get_logger().error("Coord client not available")
+    #         return
+        
+    #     coord_request = Coord.Request()
+    #     coord_request.x = transformed_position[0]
+    #     coord_request.y = transformed_position[1]
+    #     coord_request.z = transformed_position[2]
+        
+    #     self.get_logger().info("Calling Coord service")
+    #     future = self.client.call_async(coord_request)
+
     def publish_transform(self, position):
+        # Obter parâmetros atuais
+        translation = self.get_parameter('translation').get_parameter_value().double_array_value
+        rotation_deg = self.get_parameter('rotation').get_parameter_value().double_array_value
+
+        # Converter rotação de graus para radianos
+        roll = np.deg2rad(rotation_deg[0])
+        pitch = np.deg2rad(rotation_deg[1])
+        yaw = np.deg2rad(rotation_deg[2])
+
+        # Matriz de rotação a partir dos ângulos de Euler
+        rotation_matrix = transformations.euler_matrix(roll, pitch, yaw)
+
+        # Vetor de posição da câmera
+        point = np.array([position[0], position[1], position[2], 1.0])
+
+        # Aplicar rotação ao ponto
+        rotated_point = rotation_matrix.dot(point)
+
+        # Aplicar translação
+        transformed_x = rotated_point[0] + translation[0]
+        transformed_y = rotated_point[1] + translation[1]
+        transformed_z = rotated_point[2] + translation[2]
+
+        # Publicar transformação via TF
         t = TransformStamped()
         t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = "camera_color_optical_frame"
         t.child_frame_id = "detected_object"
 
-        t.transform.translation.x = position[0]
-        t.transform.translation.y = position[1]
-        t.transform.translation.z = position[2]
+        t.transform.translation.x = transformed_x
+        t.transform.translation.y = transformed_y
+        t.transform.translation.z = transformed_z
 
-        # No rotation needed, so set quaternion to identity
-        quat = transformations.quaternion_from_euler(0, 0, 0)
+        # Calcular quaternion da rotação
+        quat = transformations.quaternion_from_euler(roll, pitch, yaw)
+
         t.transform.rotation.x = quat[0]
         t.transform.rotation.y = quat[1]
         t.transform.rotation.z = quat[2]
         t.transform.rotation.w = quat[3]
 
+        # Publica no TF
         self.tf_broadcaster.sendTransform(t)
 
+        # Também envia para o serviço Coord (opcional)
         if not self.client:
             self.get_logger().error("Coord client not available")
             return
-        
-        # Calculate the offsets
-        x_offset = 0.024
-        y_offset = 0.119
-        z_offset = 0.045
-        
-        # Call the Coord service to get the coordinates
+
         coord_request = Coord.Request()
-        coord_request.x = position[0] + x_offset
-        coord_request.y = position[1] + y_offset
-        coord_request.z = position[2] + z_offset
-        #publish
+        coord_request.x = transformed_x
+        coord_request.y = transformed_y
+        coord_request.z = transformed_z
+
         self.get_logger().info("Calling Coord service")
         future = self.client.call_async(coord_request)
-
 
 
 def main(args=None):

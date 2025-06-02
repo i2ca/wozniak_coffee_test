@@ -9,7 +9,8 @@ import threading
 import queue
 from robot_control_language.llm import OpenAIAgent
 from robot_control_language.coffee.tools import hercules_functions as available_functions
-from wozniak_interfaces.srv import TriggerLLM
+from wozniak_interfaces.srv import TriggerLLM, InstructionsLLM
+from openai.types.chat.chat_completion_message import ChatCompletionMessage
 
 
 class MultimodalLLMNode(Node):
@@ -29,7 +30,7 @@ class MultimodalLLMNode(Node):
         # Subscription to the RealSense `image_raw` topic
         self.subscription = self.create_subscription(
             Image,
-            f'/{camera_namespace}/{camera_name}/color/image_raw',
+            f'/camera/camera/color/image_raw',
             self.image_callback,
             10
         )
@@ -45,10 +46,11 @@ class MultimodalLLMNode(Node):
 
         # Initialize the OpenAIAgent
         api_key = os.getenv('OPENAI_API_KEY')
-        self.agent = OpenAIAgent(model, available_functions, settings_file, self, api_key=api_key)
+        self.agent = OpenAIAgent(model, available_functions, settings_file, self)
 
         # Initialize the service to trigger the OpenAI agent
-        self.trigger_llm_srv = self.create_service(TriggerLLM, 'trigger_llm', self.trigger_llm)
+        self.TriggerLLM_srv = self.create_service(TriggerLLM, 'TriggerLLM', self.TriggerLLM)
+        self.InstructionsLLM_srv = self.create_service(InstructionsLLM, 'InstructionsLLM', self.InstructionsLLM)
 
     def image_callback(self, msg):
         try:
@@ -57,8 +59,10 @@ class MultimodalLLMNode(Node):
         except Exception as e:
             self.get_logger().error(f"Failed to process image: {e}")
 
-    def trigger_llm(self, request, response):
+    def TriggerLLM(self, request, response):
         self.get_logger().info(f"Received request to trigger LLM with message: {request.message}")
+        image_path = None
+
         if self.latest_frame is None:
             self.get_logger().warn('No image available to send.')
             response.success = False
@@ -71,19 +75,40 @@ class MultimodalLLMNode(Node):
 
         try:
             # Invoke the OpenAIAgent with the image and message
-            llm_response = self.agent.invoke(request.message, image_path)
-            self.get_logger().info(f"Response from OpenAI: {llm_response}")
+            llm_interaction_list = self.agent.invoke(request.message, image_path) 
+            self.get_logger().info(f"Response from OpenAI (full interaction list): {llm_interaction_list}")
+            
             response.success = True
-            response.message = llm_response[0].content
+            response.message = "" # Inicializa como string vazia
+
+            # Extrair apenas a última mensagem de conteúdo da assistente para o usuário
+            if llm_interaction_list:
+                for item in reversed(llm_interaction_list): # Iterar de trás para frente
+                    if isinstance(item, ChatCompletionMessage) and item.role == 'assistant' and item.content is not None:
+                        response.message = item.content
+                        break # Encontrou a última mensagem de conteúdo da assistente
+            
+            if not response.message and response.success:
+                 # Se success ainda é True mas não encontramos mensagem, algo pode estar inesperado
+                self.get_logger().warn("LLM processada com sucesso, mas nenhuma mensagem de conteúdo final da assistente foi extraída.")
+                # Considere se isso deve ser um caso de response.success = False ou se uma mensagem vazia é aceitável.
+
         except Exception as e:
             self.get_logger().error(f"Failed to send data to OpenAI: {e}")
             response.success = False
             return response
         finally:
             # Cleanup the temporary image file
-            if os.path.exists(image_path):
+            if image_path and os.path.exists(image_path):
                 os.remove(image_path)
-            return response
+            
+        self.get_logger().info(f"Final response.message: '{response.message}'")
+        return response
+
+    def InstructionsLLM(self, request, response):
+        self.get_logger().info(f'Serviço InstructionsLLM chamado com instrução: "{request.instruction}"')
+        response.success = True
+        return response
 
 def main(args=None):
     rclpy.init(args=args)
