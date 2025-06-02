@@ -3740,6 +3740,7 @@ GameObject:
   - component: {fileID: 2018825544}
   - component: {fileID: 2018825546}
   - component: {fileID: 2018825547}
+  - component: {fileID: 2018825548}
   m_Layer: 0
   m_Name: RosHolder
   m_TagString: Untagged
@@ -3812,6 +3813,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   ServiceName: TriggerLLM
   _gameControl: {fileID: 227003788}
+  _canvas: {fileID: 227003787}
+--- !u!114 &2018825548
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2018825543}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 45c8d462c1b16c64eaafc0e51e598396, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ServiceName: InstructionsLLM
   _canvas: {fileID: 227003787}
 --- !u!1 &2088905365
 GameObject:

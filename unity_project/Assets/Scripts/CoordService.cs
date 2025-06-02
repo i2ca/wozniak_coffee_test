@@ -78,9 +78,6 @@ namespace RosSharp.RosBridgeClient.MessageTypes
             ball.transform.position = fakeObj.transform.position;
 
             _canvas.UpdateObjectCoordinate(ball.transform.position);
-
-            // Update canvas instruction
-            _canvas.UpdateInstruction(request.instruction);
         }
 
     }       
