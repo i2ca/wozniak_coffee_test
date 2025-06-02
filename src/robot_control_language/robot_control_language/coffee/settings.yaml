@@ -9,6 +9,6 @@ tools:
         properties:
           object:
             type: string
-            description: Nome do objeto a ser identificado na imagem
+            description: Nome do objeto a ser identificado na imagem.
         required:
           - object

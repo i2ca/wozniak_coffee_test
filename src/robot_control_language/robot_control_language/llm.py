@@ -86,12 +86,19 @@ class OpenAIAgent():
         self._add_user_message_to_chat_history(text, image_path)
         new_message_index = len(self.chat_history)
         while True:
-            response_message = self._chat_completion_request().choices[0].message
+            response = self._chat_completion_request()
+            if isinstance(response, Exception):
+                self.node.get_logger().error(f"Error during OpenAI API request: {response}")
+                # Decide how to handle the exception: re-raise, return error, etc.
+                # For now, let's re-raise to make it visible to the caller
+                raise response
+            
+            response_message = response.choices[0].message
             self.node.get_logger().info(f"response_message: {response_message}")
             tool_calls = response_message.tool_calls
             self.chat_history.append(response_message)
             if tool_calls is None:
-                break
-            for tool_call in tool_calls:
-                self._execute_tool_call(tool_call)
+               break
+            for tool_call in response_message.tool_calls:
+               self._execute_tool_call(tool_call)
         return self.chat_history[new_message_index:]

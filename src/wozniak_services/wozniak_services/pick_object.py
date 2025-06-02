@@ -1,4 +1,6 @@
 import re
+
+import numpy as np
 import rclpy.time
 from wozniak_interfaces.srv import PickObject
 from wozniak_interfaces.srv import Coord
@@ -26,6 +28,10 @@ class PickObjectService(Node):
         self.tf_broadcaster = tf2_ros.TransformBroadcaster(self)
         self.srv = self.create_service(PickObject, 'pick_object', self.pick_object_callback)
         self.client = self.create_client(Coord, "Coord")
+
+        # Declaração dos parâmetros ajustáveis
+        self.declare_parameter('translation', [0.024, 0.119, 0.045])  # Deslocamento (m)
+        self.declare_parameter('rotation', [0.0, 0.0, 0.0])  # Rotação em graus (roll, pitch, yaw)
         
         # Imagem com as marcações acumuladas
         self.marked_image = None
@@ -35,9 +41,9 @@ class PickObjectService(Node):
         self.depth_initialized = False
         self.camera_info_initialized = False
         
-        self.create_subscription(Image, '/camera/color/image_raw', self.image_callback, 10)
-        self.create_subscription(Image, '/camera/depth/image_rect_raw', self.depth_callback, 10)
-        self.create_subscription(CameraInfo, '/camera/depth/camera_info', self.camera_info_callback, 10)
+        self.create_subscription(Image, '/camera/camera/color/image_raw', self.image_callback, 10)
+        self.create_subscription(Image, '/camera/camera/aligned_depth_to_color/image_raw', self.depth_callback, 10)
+        self.create_subscription(CameraInfo, '/camera/camera/aligned_depth_to_color/camera_info', self.camera_info_callback, 10)
         self.get_logger().info('Serviço pick_object iniciado. Aguardando dados da câmera...')
 
     def image_callback(self, msg):
@@ -93,7 +99,6 @@ class PickObjectService(Node):
             msg = 'Dados da câmera não disponíveis. Verifique se a RealSense está conectada e funcionando.'
             self.get_logger().error(msg)
             response.success = False
-            response.message = msg
             return response
 
         try:
@@ -101,7 +106,6 @@ class PickObjectService(Node):
             position = self.get_3d_position(x, y)
             self.publish_transform(position)
             response.success = True
-            response.message = 'Object picked'
         except Exception as e:
             # Se for erro de objeto não encontrado, apenas loga a mensagem informativa
             if "não encontrou o objeto" in str(e):
@@ -111,7 +115,6 @@ class PickObjectService(Node):
                 self.get_logger().error(f'Failed to pick object: {str(e)}')
                 self.get_logger().error(f'Stack trace: {traceback.format_exc()}')
             response.success = False
-            response.message = str(e)
         
         return response
 
@@ -151,12 +154,14 @@ class PickObjectService(Node):
             model="lcad-ica",
             max_completion_tokens=300,
         )
-        result = response.choices[0].message.content
+        result = response.choices[0].message
         self.get_logger().info(f'Resposta MolmoAI: {result}')
         
-        matches = re.findall(r'x="(\d+\.\d+)" y="(\d+\.\d+)"', result)
+        # Extrai o conteúdo da mensagem para o regex
+        content_string = result.content
+        matches = re.findall(r'x="(\d+\.\d+)" y="(\d+\.\d+)"', content_string)
         if not matches:
-            self.get_logger().info(f'MolmoAI não encontrou o objeto "{target_object}" na imagem atual')
+            self.get_logger().info(f'MolmoAI não encontrou o objeto "{target_object}" na imagem atual (conteúdo: {content_string})')
             raise Exception(f'MolmoAI não encontrou o objeto "{target_object}" na imagem atual. Por favor, verifique se o objeto está visível para a câmera.')
             
         x, y = matches[0]
@@ -230,43 +235,167 @@ class PickObjectService(Node):
         
         return (position_x, position_y, position_z)
     
+    def apply_transformation(self, point, translation, rotation_euler):
+        """
+        Aplica uma transformação rígida (rotação + translação) a um ponto 3D.
+        
+        - point: tuple (x, y, z)
+        - translation: tuple (tx, ty, tz)
+        - rotation_euler: tuple (roll, pitch, yaw) em radianos
+        """
+        # Conversão dos ângulos de Euler para matriz de rotação
+        rotation_matrix = transformations.euler_matrix(*rotation_euler)[:3, :3]
+        
+        # Aplicar rotação
+        rotated_point = rotation_matrix.dot(np.array(point))
+        
+        # Aplicar translação
+        transformed_point = rotated_point + np.array(translation)
+        
+        return transformed_point
+    
+    # def publish_transform(self, position):
+    #     t = TransformStamped()
+    #     t.header.stamp = self.get_clock().now().to_msg()
+    #     t.header.frame_id = "camera_color_optical_frame"
+    #     t.child_frame_id = "detected_object"
+
+    #     t.transform.translation.x = position[0]
+    #     t.transform.translation.y = position[1]
+    #     t.transform.translation.z = position[2]
+
+    #     # No rotation needed, so set quaternion to identity
+    #     quat = transformations.quaternion_from_euler(0, 0, 0)
+    #     t.transform.rotation.x = quat[0]
+    #     t.transform.rotation.y = quat[1]
+    #     t.transform.rotation.z = quat[2]
+    #     t.transform.rotation.w = quat[3]
+
+    #     self.tf_broadcaster.sendTransform(t)
+
+    #     if not self.client:
+    #         self.get_logger().error("Coord client not available")
+    #         return
+        
+    #     # Calculate the offsets
+    #     x_offset = 0.024
+    #     y_offset = 0.119
+    #     z_offset = 0.045
+        
+    #     # Call the Coord service to get the coordinates
+    #     coord_request = Coord.Request()
+    #     coord_request.x = position[0] + x_offset
+    #     coord_request.y = position[1] + y_offset
+    #     coord_request.z = position[2] + z_offset
+        
+    #     #publish
+    #     self.get_logger().info("Calling Coord service")
+    #     future = self.client.call_async(coord_request)
+    
+    # def publish_transform(self, position):
+    #     # Defina aqui os offsets de translação (em metros)
+    #     translation = (0.024, 0.119, 0.045)  # exemplo
+
+    #     # Defina aqui os ângulos de rotação (em radianos)
+    #     rotation_euler = (
+    #         np.deg2rad(0),   # roll
+    #         np.deg2rad(0),   # pitch
+    #         np.deg2rad(0)    # yaw
+    #     )
+        
+    #     # Aplica transformação
+    #     transformed_position = self.apply_transformation(position, translation, rotation_euler)
+        
+    #     # Publica no TF
+    #     t = TransformStamped()
+    #     t.header.stamp = self.get_clock().now().to_msg()
+    #     t.header.frame_id = "camera_color_optical_frame"
+    #     t.child_frame_id = "detected_object"
+
+    #     t.transform.translation.x = transformed_position[0]
+    #     t.transform.translation.y = transformed_position[1]
+    #     t.transform.translation.z = transformed_position[2]
+
+    #     # Converte a rotação de Euler para quaternion
+    #     quat = transformations.quaternion_from_euler(*rotation_euler)
+    #     t.transform.rotation.x = quat[0]
+    #     t.transform.rotation.y = quat[1]
+    #     t.transform.rotation.z = quat[2]
+    #     t.transform.rotation.w = quat[3]
+
+    #     self.tf_broadcaster.sendTransform(t)
+
+    #     # Também envia para o serviço Coord com a mesma transformação
+    #     if not self.client:
+    #         self.get_logger().error("Coord client not available")
+    #         return
+        
+    #     coord_request = Coord.Request()
+    #     coord_request.x = transformed_position[0]
+    #     coord_request.y = transformed_position[1]
+    #     coord_request.z = transformed_position[2]
+        
+    #     self.get_logger().info("Calling Coord service")
+    #     future = self.client.call_async(coord_request)
+
     def publish_transform(self, position):
+        # Obter parâmetros atuais
+        translation = self.get_parameter('translation').get_parameter_value().double_array_value
+        rotation_deg = self.get_parameter('rotation').get_parameter_value().double_array_value
+
+        # Converter rotação de graus para radianos
+        roll = np.deg2rad(rotation_deg[0])
+        pitch = np.deg2rad(rotation_deg[1])
+        yaw = np.deg2rad(rotation_deg[2])
+
+        # Matriz de rotação a partir dos ângulos de Euler
+        rotation_matrix = transformations.euler_matrix(roll, pitch, yaw)
+
+        # Vetor de posição da câmera
+        point = np.array([position[0], position[1], position[2], 1.0])
+
+        # Aplicar rotação ao ponto
+        rotated_point = rotation_matrix.dot(point)
+
+        # Aplicar translação
+        transformed_x = rotated_point[0] + translation[0]
+        transformed_y = rotated_point[1] + translation[1]
+        transformed_z = rotated_point[2] + translation[2]
+
+        # Publicar transformação via TF
         t = TransformStamped()
         t.header.stamp = self.get_clock().now().to_msg()
         t.header.frame_id = "camera_color_optical_frame"
         t.child_frame_id = "detected_object"
 
-        t.transform.translation.x = position[0]
-        t.transform.translation.y = position[1]
-        t.transform.translation.z = position[2]
+        t.transform.translation.x = transformed_x
+        t.transform.translation.y = transformed_y
+        t.transform.translation.z = transformed_z
 
-        # No rotation needed, so set quaternion to identity
-        quat = transformations.quaternion_from_euler(0, 0, 0)
+        # Calcular quaternion da rotação
+        quat = transformations.quaternion_from_euler(roll, pitch, yaw)
+
         t.transform.rotation.x = quat[0]
         t.transform.rotation.y = quat[1]
         t.transform.rotation.z = quat[2]
         t.transform.rotation.w = quat[3]
 
+        # Publica no TF
         self.tf_broadcaster.sendTransform(t)
 
+        # Também envia para o serviço Coord (opcional)
         if not self.client:
             self.get_logger().error("Coord client not available")
             return
-        
-        # Calculate the offsets
-        x_offset = 0.024
-        y_offset = 0.119
-        z_offset = 0.045
-        
-        # Call the Coord service to get the coordinates
+
         coord_request = Coord.Request()
-        coord_request.x = position[0] + x_offset
-        coord_request.y = position[1] + y_offset
-        coord_request.z = position[2] + z_offset
-        
-        #publish
+        coord_request.x = transformed_x
+        coord_request.y = transformed_y
+        coord_request.z = transformed_z
+
         self.get_logger().info("Calling Coord service")
         future = self.client.call_async(coord_request)
+
 
 def main(args=None):
     rclpy.init(args=args)

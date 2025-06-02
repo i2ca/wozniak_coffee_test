@@ -21,10 +21,10 @@ def generate_launch_description():
             launch_arguments={
                 'camera_name': LaunchConfiguration('camera_name'),
                 'camera_namespace': LaunchConfiguration('camera_namespace'),
-                # 'align_depth.enable': 'True',
-                # 'enable_sync': 'True',
-                # 'enable_pointcloud': 'False',
-                # 'enable_rgbd': 'True',
+                'align_depth.enable': 'True',
+                'enable_sync': 'True',
+                'enable_pointcloud': 'False',
+                'enable_rgbd': 'True',
             }.items()
         ),
         # IncludeLaunchDescription(

@@ -24,6 +24,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/HighlightObject.srv"
   "srv/Coord.srv"
   "srv/TriggerLLM.srv"
+  "srv/InstructionsLLM.srv"
 )
 
 if(BUILD_TESTING)
