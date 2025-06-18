@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'pick_object_server = wozniak_services.pick_object:main',
+            'camera_calibration_auto = wozniak_services.cameraCalibration_auto:main',
         ],
     },
 )

@@ -34,19 +34,6 @@ class ChatNode(Node):
                 response = future.result()
                 if response.success:
                     print("LLM:", response.message)
-                    # Enviar a mensagem da LLM para o Unity usando o serviço InstructionsLLM
-                    unity_request = InstructionsLLM.Request()
-                    unity_request.instruction = response.message
-                    unity_future = self.instructions_llm_client.call_async(unity_request)
-                    rclpy.spin_until_future_complete(self, unity_future)
-                    if unity_future.result() is not None:
-                        unity_response = unity_future.result()
-                        if unity_response.success:
-                            self.get_logger().info('Instrução enviada para o Unity (via InstructionsLLM) com sucesso.')
-                        else:
-                            self.get_logger().error('Erro ao enviar instrução para o Unity (via InstructionsLLM).')
-                    else:
-                        self.get_logger().error('Erro ao chamar o serviço InstructionsLLM para o Unity.')
                 else:
                     print("Erro no processamento pelo LLM.")
             else:

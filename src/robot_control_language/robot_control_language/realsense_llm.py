@@ -52,6 +52,13 @@ class MultimodalLLMNode(Node):
         self.TriggerLLM_srv = self.create_service(TriggerLLM, 'TriggerLLM', self.TriggerLLM)
         self.InstructionsLLM_srv = self.create_service(InstructionsLLM, 'InstructionsLLM', self.InstructionsLLM)
 
+        # Client to send instructions to Unity (or other consumer of InstructionsLLM)
+        self.unity_instructions_client = self.create_client(InstructionsLLM, "InstructionsLLM")
+        if not self.unity_instructions_client.wait_for_service(timeout_sec=5.0):
+            self.get_logger().warn('Serviço "InstructionsLLM" (para Unity/destino final) não disponível após 5 segundos.')
+        else:
+            self.get_logger().info('Cliente para "InstructionsLLM" (para Unity/destino final) conectado.')
+
     def image_callback(self, msg):
         try:
             # Convert ROS Image message to OpenCV format
@@ -71,7 +78,8 @@ class MultimodalLLMNode(Node):
         # Save the latest frame as a temporary image file
         with tempfile.NamedTemporaryFile(suffix=".jpg", delete=False) as temp_image_file:
             image_path = temp_image_file.name
-            cv2.imwrite(image_path, self.latest_frame)
+            rgb_frame = cv2.cvtColor(self.latest_frame, cv2.COLOR_BGR2RGB)
+            cv2.imwrite(image_path, rgb_frame)
 
         try:
             # Invoke the OpenAIAgent with the image and message
@@ -96,19 +104,43 @@ class MultimodalLLMNode(Node):
         except Exception as e:
             self.get_logger().error(f"Failed to send data to OpenAI: {e}")
             response.success = False
-            return response
         finally:
             # Cleanup the temporary image file
             if image_path and os.path.exists(image_path):
                 os.remove(image_path)
-            
-        self.get_logger().info(f"Final response.message: '{response.message}'")
+
+        if response.success and response.message:
+            if self.unity_instructions_client and self.unity_instructions_client.service_is_ready():
+                self.get_logger().info(f"Enviando instrução para destino final (Unity/etc) via InstructionsLLM: '{response.message}'")
+                unity_request = InstructionsLLM.Request()
+                unity_request.instruction = response.message
+                future = self.unity_instructions_client.call_async(unity_request)
+                future.add_done_callback(self._unity_call_done_callback)
+            else:
+                self.get_logger().error('Não foi possível enviar instrução para destino final: cliente InstructionsLLM não está pronto ou não foi inicializado.')
+        elif response.success and not response.message:
+            self.get_logger().warn("LLM processada com sucesso, mas nenhuma mensagem de conteúdo final da assistente para enviar ao destino final.")
+        
+        self.get_logger().info(f"Final response.message (TriggerLLM): '{response.message}'")
         return response
 
     def InstructionsLLM(self, request, response):
         self.get_logger().info(f'Serviço InstructionsLLM chamado com instrução: "{request.instruction}"')
         response.success = True
         return response
+
+    def _unity_call_done_callback(self, future):
+        try:
+            unity_service_response = future.result()
+            if unity_service_response is not None:
+                if unity_service_response.success:
+                    self.get_logger().info('Instrução enviada para destino final (via InstructionsLLM) com sucesso (callback).')
+                else:
+                    self.get_logger().error('Erro ao enviar instrução para destino final (via InstructionsLLM): Falha no serviço (callback).')
+            else:
+                self.get_logger().error('Erro ao chamar serviço InstructionsLLM para destino final: Sem resposta (None) (callback).')
+        except Exception as e:
+            self.get_logger().error(f'Exceção no callback da chamada InstructionsLLM para destino final: {e}')
 
 def main(args=None):
     rclpy.init(args=args)
